@@ -1,8 +1,8 @@
 from torch.autograd import Function
 
 from ..nufft.fft_functions import (ifft_and_scale_on_gridded_data,
-                                   scale_and_fft_on_image_volume,
-                                   fft_filter)
+                                   scale_and_fft_on_image_volume)
+                                   # fft_filter)
 from .kbinterp import AdjKbInterpFunction, KbInterpFunction
 
 

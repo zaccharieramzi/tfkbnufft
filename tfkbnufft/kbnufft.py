@@ -3,8 +3,8 @@ import warnings
 import numpy as np
 import tensorflow as tf
 
-from .functional.kbnufft import (AdjKbNufftFunction, KbNufftFunction,
-                                 ToepNufftFunction)
+from .functional.kbnufft import AdjKbNufftFunction, KbNufftFunction
+                                 # ToepNufftFunction)
 from .kbmodule import KbModule
 from .nufft.utils import build_spmatrix, build_table, compute_scaling_coefs
 

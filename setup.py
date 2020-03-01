@@ -15,9 +15,9 @@ HERE = pathlib.Path(__file__).parent
 # The text of the README file
 README = (HERE / "README.md").read_text()
 
-builtins.__TORCHKBNUFFT_SETUP__ = True
+builtins.__TFKBNUFFT_SETUP__ = True
 
-import torchkbnufft  # noqa: E402
+import tfkbnufft  # noqa: E402
 
 
 def load_requirements(path_dir=HERE, comment_char='#'):
@@ -35,22 +35,22 @@ def load_requirements(path_dir=HERE, comment_char='#'):
 
 # https://packaging.python.org/discussions/install-requires-vs-requirements
 setup(
-    name='torchkbnufft',
-    version=torchkbnufft.__version__,
-    description=torchkbnufft.__docs__,
-    author=torchkbnufft.__author__,
-    author_email=torchkbnufft.__author_email__,
-    url=torchkbnufft.__homepage__,
-    download_url='https://github.com/mmuckley/torchkbnufft',
-    license=torchkbnufft.__license__,
-    packages=find_packages(exclude=['tests', 'notebooks', 'speedtests']),
+    name='tfkbnufft',
+    version=tfkbnufft.__version__,
+    description=tfkbnufft.__docs__,
+    author=tfkbnufft.__author__,
+    author_email=tfkbnufft.__author_email__,
+    url=tfkbnufft.__homepage__,
+    download_url='https://github.com/zaccharieramzi/tfkbnufft',
+    license=tfkbnufft.__license__,
+    packages=find_packages(exclude=['torchkbnufft', 'tests', 'notebooks', 'speedtests']),
 
     long_description=open('README.md', encoding='utf-8').read(),
     long_description_content_type='text/markdown',
     include_package_data=True,
     zip_safe=False,
 
-    keywords=['MRI', 'pytorch'],
+    keywords=['MRI', 'tensorflow'],
     python_requires='>=3.5',
     setup_requires=[],
     install_requires=load_requirements(HERE),

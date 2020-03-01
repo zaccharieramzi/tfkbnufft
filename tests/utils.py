@@ -8,3 +8,10 @@ def to_torch_arg(array):
         return torch.tensor(torch_x)
     else:
         return torch.tensor(array)
+
+def torch_to_numpy(array, complex_dim=None):
+    if complex_dim is not None:
+        assert array.shape[complex_dim] == 2
+        return array.select(complex_dim, 0).numpy() + 1j * array.select(complex_dim, 1).numpy()
+    else:
+        return array.numpy()

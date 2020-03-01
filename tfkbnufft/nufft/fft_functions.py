@@ -75,11 +75,9 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
         x = tf.signal.ifft3d(x)
 
     # crop to output size
-    crop_starts = tuple(np.array(x.shape).astype(np.int) * 0)
-    crop_ends = [x.shape[0], x.shape[1], x.shape[2]]
-    for dim in im_size:
-        crop_ends.append(int(dim))
-    x = x[tuple(map(slice, crop_starts, crop_ends))]
+    x = x[:, :, :int(im_size[0]), :int(im_size[1])]
+    if tf.size(grid_size) == 3:
+        x = x[..., :int(im_size[2])]
 
     # scaling
     scaling_factor = tf.cast(tf.reduce_prod(grid_size), 'complex64')

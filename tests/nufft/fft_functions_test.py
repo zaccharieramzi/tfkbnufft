@@ -10,7 +10,7 @@ def test_scale_and_fft_on_image_volume():
     # problem definition
     x = shepp_logan_phantom().astype(np.complex)
     im_size = x.shape
-    scaling_coeffs = np.random.randn(*im_size, dtype='complex64')
+    scaling_coeffs = np.random.randn(*im_size) + 1j * np.random.randn(*im_size)
     grid_size = [2*im_dim for im_dim in im_size]
     # torch computations
     torch_x = np.stack((np.real(x), np.imag(x)))
@@ -21,8 +21,8 @@ def test_scale_and_fft_on_image_volume():
     res_torch = torch_fft_functions.scale_and_fft_on_image_volume(
         torch_x,
         torch_scaling_coeffs,
-        grid_size,
-        im_size,
+        torch.tensor(grid_size),
+        torch.tensor(im_size),
         True,
     ).numpy()
     res_torch = res_torch[:, :, 0] + 1j *res_torch[:, :, 1]
@@ -30,8 +30,8 @@ def test_scale_and_fft_on_image_volume():
     res_tf = tf_fft_functions.scale_and_fft_on_image_volume(
         tf.convert_to_tensor(x)[None, None, ...],
         tf.convert_to_tensor(scaling_coeffs),
-        grid_size,
-        im_size,
+        tf.convert_to_tensor(grid_size),
+        tf.convert_to_tensor(im_size),
         True,
     ).numpy()
     np.testing.assert_allclose(res_torch, res_tf)

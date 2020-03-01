@@ -164,43 +164,30 @@ def run_interp_back(kdat, tm, params):
 
     # extract data types
     dtype = table[0].dtype
-    device = table[0].device
-    int_type = torch.long
+    int_type = tf.int64
 
     # center of tables
-    centers = torch.floor(numpoints * L / 2).to(dtype=int_type)
+    centers = tf.cast(tf.floor(numpoints * L / 2), int_type)
 
     # offset from k-space to first coef loc
     kofflist = 1 + \
-        torch.floor(tm - numpoints.unsqueeze(1) / 2.0).to(dtype=torch.long)
+        tf.cast(tf.floor(tm - numpoints[:, None] / 2.0), int_type)
 
     # initialize output array
-    griddat = torch.zeros(size=(kdat.shape[0], 2, torch.prod(dims)),
-                          dtype=dtype, device=device)
+    griddat = tf.zeros(
+        shape=(kdat.shape[0], 2, tf.reduce_prod(dims)),
+        dtype=dtype,
+    )
 
     # loop over offsets and take advantage of numpy broadcasting
     for Jind in range(Jlist.shape[1]):
         coef, arr_ind = calc_coef_and_indices(
             tm, kofflist, Jlist[:, Jind], table, centers, L, dims, conjcoef=True)
 
-        # the following code takes ordered data and scatters it on to an image grid
-        # profiling for a 2D problem showed drastic differences in performances
-        # for these two implementations on cpu/gpu, but they do the same thing
-        if device == torch.device('cpu'):
-            tmp = complex_mult(coef.unsqueeze(0), kdat, dim=1)
-            for bind in range(griddat.shape[0]):
-                for riind in range(griddat.shape[1]):
-                    griddat[bind, riind].index_put_(
-                        tuple(arr_ind.unsqueeze(0)),
-                        tmp[bind, riind],
-                        accumulate=True
-                    )
-        else:
-            griddat.index_add_(
-                2,
-                arr_ind,
-                complex_mult(coef.unsqueeze(0), kdat, dim=1)
-            )
+        updates = coef[None, ...] * kdat
+        # TODO: change because the array of indexes was only in one dimension
+        arr_ind = arr_ind
+        tf.tensor_scatter_nd_add(griddat, arr_ind, updates)
 
     return griddat
 

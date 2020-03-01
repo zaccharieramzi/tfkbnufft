@@ -1,6 +1,6 @@
 # TF KB-NUFFT
 
-[GitHub](https://github.com/zaccharieramzi/tfkbnufft)
+[GitHub](https://github.com/zaccharieramzi/tfkbnufft) | [![Build Status](https://travis-ci.com/zaccharieramzi/tfkbnufft.svg?branch=master)](https://travis-ci.com/zaccharieramzi/tfkbnufft)
 
 
 ## About

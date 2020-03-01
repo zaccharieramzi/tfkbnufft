@@ -76,9 +76,9 @@ def calc_coef_and_indices(tm, kofflist, Jval, table, centers, L, dims, conjcoef=
     for d in range(ndims):  # spatial dimension
         sliced_table = tf.gather_nd(table[d], (distind[d, :] + centers[d])[:, None])
         if conjcoef:
-            coef = coef * sliced_table
-        else:
             coef = coef * tf.math.conj(sliced_table)
+        else:
+            coef = coef * sliced_table
         arr_ind = arr_ind + tf.reshape(tf.math.floormod(gridind[d, :], dims[d]), [-1]) * \
             tf.reduce_prod(dims[d + 1:])
 

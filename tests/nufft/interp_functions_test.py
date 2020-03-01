@@ -49,14 +49,18 @@ def test_calc_coef_and_indices(conjcoef):
     np.testing.assert_equal(res_torch_ind.numpy(), res_tf_ind.numpy())
     np.testing.assert_allclose(res_torch_coefs, res_tf_coefs.numpy())
 
-def test_run_interp():
+@pytest.mark.parametrize('n_coil', [1, 2, 5, 16])
+def test_run_interp(n_coil):
     tm, Jgen, table, numpoints, L, grid_size = setup()
-    griddat = np.reshape(
-        np.random.randn(*grid_size.astype('int')) + 1j * np.random.randn(*grid_size.astype('int')),
-        (1, -1),  # 1 coil
-    )
+    grid_size = grid_size.astype('int')
+    griddat = np.stack([
+        np.reshape(
+            np.random.randn(*grid_size) + 1j * np.random.randn(*grid_size),
+            [-1],
+        ) for i in range(n_coil)
+    ])
     params = {
-        'dims': grid_size.astype('int'),
+        'dims': grid_size,
         'table': table,
         'numpoints': numpoints,
         'Jlist': Jgen,
@@ -64,9 +68,26 @@ def test_run_interp():
     }
     args = [griddat, tm, params]
     torch_args = [to_torch_arg(arg) for arg in args]
+    # I need this because griddat is first n_coil then real/imag
     torch_args[0] = torch_args[0].permute(1, 0, 2)
     res_torch = torch_interp_functions.run_interp(*torch_args)
+    # I need this because I create Jlist in a neater way for tensorflow
     params['Jlist'] = Jgen.T
     tf_args = [to_tf_arg(arg) for arg in args]
     res_tf = tf_interp_functions.run_interp(*tf_args)
     np.testing.assert_allclose(torch_to_numpy(res_torch, complex_dim=1), res_tf.numpy())
+
+# def test_kbinterp():
+#     tm, _, table, numpoints, L, grid_size = setup()
+#     x =
+#     interpob = {
+#         'dims': grid_size.astype('int'),
+#         'table': table,
+#         'numpoints': numpoints,
+#         'table_oversamp': L,
+#     }
+#     args = [x, om, interpob]
+#     torch_args = [to_torch_arg(arg) for arg in args]
+#     res_torch = torch_interp_functions.kbinterp(*torch_args)
+#     tf_args = [to_tf_arg(arg) for arg in args]
+#     res_tf = tf_interp_functions.kbinterp(*tf_args)

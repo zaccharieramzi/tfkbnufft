@@ -67,10 +67,7 @@ def calc_coef_and_indices(tm, kofflist, Jval, table, centers, L, dims, conjcoef=
 
     # indexing locations
     gridind = tf.cast(kofflist + Jval[:, None], dtype)
-    distind = tf.cast(
-        tf.round((tm - gridind) * L[:, None]),
-        int_type,
-    )
+    distind = tf.cast(tf.round((tm - gridind) * L[:, None]), int_type)
     gridind = tf.cast(gridind, int_type)
 
     arr_ind = tf.zeros((M,), dtype=int_type)
@@ -83,7 +80,9 @@ def calc_coef_and_indices(tm, kofflist, Jval, table, centers, L, dims, conjcoef=
         if conjcoef:
             coef = coef * table[d][:, distind[d, :] + centers[d]]
         else:
-            coef = coef * tf.math.conj(table[d][:, distind[d, :] + centers[d]])
+            # TODO: work on the indexes that need to be on the second dimension
+            sliced_table = tf.gather_nd(table[d], distind[d, :] + centers[d])
+            coef = coef * tf.math.conj(sliced_table)
         arr_ind = arr_ind + tf.reshape(tf.math.floormod(gridind[d, :], dims[d]), [-1]) * \
             tf.reduce_prod(dims[d + 1:])
 

@@ -3,7 +3,7 @@ from skimage.data import shepp_logan_phantom
 import tensorflow as tf
 import torch
 
-from tfkbnufft.nufft.fft_functions import fft_functions as tf_fft_functions
+from tfkbnufft.nufft import fft_functions as tf_fft_functions
 from torchkbnufft.nufft import fft_functions as torch_fft_functions
 
 def test_scale_and_fft_on_image_volume():
@@ -27,7 +27,7 @@ def test_scale_and_fft_on_image_volume():
     ).numpy()
     res_torch = res_torch[:, :, 0] + 1j *res_torch[:, :, 1]
     # tf computations
-    res_tf = torch_fft_functions.scale_and_fft_on_image_volume(
+    res_tf = tf_fft_functions.scale_and_fft_on_image_volume(
         tf.convert_to_tensor(x)[None, None, ...],
         tf.convert_to_tensor(scaling_coeffs),
         grid_size,

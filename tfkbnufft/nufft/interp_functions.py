@@ -113,7 +113,7 @@ def run_interp(griddat, tm, params):
 
     # offset from k-space to first coef loc
     kofflist = 1 + \
-        tf.cast(tf.floor(tm - numpoints.unsqueeze(1) / 2.0), int_type)
+        tf.cast(tf.floor(tm - numpoints[:, None] / 2.0), int_type)
 
     # initialize output array
     kdat = tf.zeros(
@@ -126,12 +126,8 @@ def run_interp(griddat, tm, params):
         coef, arr_ind = calc_coef_and_indices(
             tm, kofflist, J, table, centers, L, dims)
 
-        # unsqueeze coil and real/imag dimensions for on-grid indices
-        arr_ind = arr_ind[None, ...].tile([
-            kdat.shape[0],
-            1
-        ])
-
+        # I don't need to expand on coil dimension since I use tf gather and not
+        # gather_nd
         # gather and multiply coefficients
         kdat += coef[None, ...] * tf.gather(griddat, arr_ind, axis=1)
 

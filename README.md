@@ -1,4 +1,4 @@
-# Torch KB-NUFFT
+# TF KB-NUFFT
 
 [GitHub](https://github.com/zaccharieramzi/tfkbnufft)
 

@@ -54,7 +54,7 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
     """Applies the iFFT and any relevant scaling factors to x.
 
     Args:
-        x (tensor): The image to be iFFT'd.
+        x (tensor): The gridded data to be iFFT'd.
         scaling_coef (tensor): The NUFFT scaling coefficients to be multiplied
             after iFFT.
         grid_size (tensor): The oversampled grid size.

@@ -45,7 +45,8 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
     else:
         x = tf.signal.fft3d(x)
     if norm == 'ortho':
-        x = x / tf.sqrt(tf.reduce_prod(grid_size))
+        scaling_factor = tf.cast(tf.reduce_prod(grid_size), 'complex64')
+        x = x / tf.sqrt(scaling_factor)
 
     return x
 
@@ -81,10 +82,11 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
     x = x[tuple(map(slice, crop_starts, crop_ends))]
 
     # scaling
+    scaling_factor = tf.cast(tf.reduce_prod(grid_size), 'complex64')
     if norm == 'ortho':
-        x = x * tf.sqrt(tf.reduce_prod(grid_size))
+        x = x * tf.sqrt(scaling_factor)
     else:
-        x = x * tf.reduce_prod(grid_size)
+        x = x * scaling_factor
 
     # scaling coefficient multiply
     # this might have to be revised, or the whole thing put in a tf py function

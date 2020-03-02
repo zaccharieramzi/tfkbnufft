@@ -70,13 +70,13 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
     # do the inverse fft
     if tf.size(grid_size) == 2:
         x = tf.signal.ifft2d(x)
-    else:
-        x = tf.signal.ifft3d(x)
+    # else:
+    #     x = tf.signal.ifft3d(x)
 
     # crop to output size
     x = x[:, :, :int(im_size[0]), :int(im_size[1])]
-    if tf.size(grid_size) == 3:
-        x = x[..., :int(im_size[2])]
+    # if tf.size(grid_size) == 3:
+    #     x = x[..., :int(im_size[2])]
 
     # scaling
     scaling_factor = tf.cast(tf.reduce_prod(grid_size), x.dtype)

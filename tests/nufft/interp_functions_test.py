@@ -32,6 +32,9 @@ def setup():
     grid_size = grid_size.astype('float')
     return tm, Jgen, table, numpoints, L, grid_size
 
+def setup_run_interp():
+    pass
+
 
 @pytest.mark.parametrize('conjcoef', [True, False])
 def test_calc_coef_and_indices(conjcoef):
@@ -74,6 +77,33 @@ def test_run_interp(n_coil):
     params['Jlist'] = Jgen.T
     tf_args = [to_tf_arg(arg) for arg in args]
     res_tf = tf_interp_functions.run_interp(*tf_args)
+    np.testing.assert_allclose(torch_to_numpy(res_torch, complex_dim=1), res_tf.numpy())
+
+@pytest.mark.parametrize('n_coil', [1, 2, 5, 16])
+def test_run_interp_back(n_coil):
+    tm, Jgen, table, numpoints, L, grid_size = setup()
+    num_samples = tm.shape[1]
+    grid_size = grid_size.astype('int')
+    kdat = np.stack([
+        np.random.randn(num_samples) + 1j * np.random.randn(num_samples)
+        for i in range(n_coil)
+    ])
+    params = {
+        'dims': grid_size,
+        'table': table,
+        'numpoints': numpoints,
+        'Jlist': Jgen,
+        'table_oversamp': L,
+    }
+    args = [kdat, tm, params]
+    torch_args = [to_torch_arg(arg) for arg in args]
+    # I need this because griddat is first n_coil then real/imag
+    torch_args[0] = torch_args[0].permute(1, 0, 2)
+    res_torch = torch_interp_functions.run_interp_back(*torch_args)
+    # I need this because I create Jlist in a neater way for tensorflow
+    params['Jlist'] = Jgen.T
+    tf_args = [to_tf_arg(arg) for arg in args]
+    res_tf = tf_interp_functions.run_interp_back(*tf_args)
     np.testing.assert_allclose(torch_to_numpy(res_torch, complex_dim=1), res_tf.numpy())
 
 @pytest.mark.parametrize('n_coil', [1, 2, 5, 16])

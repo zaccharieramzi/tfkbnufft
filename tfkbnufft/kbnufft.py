@@ -136,88 +136,92 @@ class KbNufftModule(KbModule):
 
         return interpob
 
-@tf.function
-@tf.custom_gradient
-def kbnufft_forward(x, om, interpob, interp_mats=None):
-    """Apply FFT and interpolate from gridded data to scattered data.
+def kbnufft_forward(interpob, interp_mats=None):
+    @tf.function
+    @tf.custom_gradient
+    def kbnufft_forward_for_interpob(x, om):
+        """Apply FFT and interpolate from gridded data to scattered data.
 
-    Inputs are assumed to be batch/chans x coil x real/imag x image dims.
-    Om should be nbatch x ndims x klength.
+        Inputs are assumed to be batch/chans x coil x real/imag x image dims.
+        Om should be nbatch x ndims x klength.
 
-    Args:
-        x (tensor): The original imagel.
-        om (tensor, optional): A new set of omega coordinates at which to
-            calculate the signal in radians/voxel.
-        interp_mats (dict, default=None): A dictionary with keys
-            'real_interp_mats' and 'imag_interp_mats', each key containing
-            a list of interpolation matrices (see
-            mri.sparse_interp_mat.precomp_sparse_mats for construction).
-            If None, then a standard interpolation is run.
+        Args:
+            x (tensor): The original imagel.
+            om (tensor, optional): A new set of omega coordinates at which to
+                calculate the signal in radians/voxel.
+            interp_mats (dict, default=None): A dictionary with keys
+                'real_interp_mats' and 'imag_interp_mats', each key containing
+                a list of interpolation matrices (see
+                mri.sparse_interp_mat.precomp_sparse_mats for construction).
+                If None, then a standard interpolation is run.
 
-    Returns:
-        tensor: x computed at off-grid locations in om.
-    """
-    # this is with registered gradient, I would like to try without
-    # y = KbNufftFunction.apply(x, om, interpob, interp_mats)
-    # extract interpolation params
-    scaling_coef = interpob['scaling_coef']
-    grid_size = interpob['grid_size']
-    im_size = interpob['im_size']
-    norm = interpob['norm']
-    im_rank = interpob.get('im_rank', 2)
+        Returns:
+            tensor: x computed at off-grid locations in om.
+        """
+        # this is with registered gradient, I would like to try without
+        # y = KbNufftFunction.apply(x, om, interpob, interp_mats)
+        # extract interpolation params
+        scaling_coef = interpob['scaling_coef']
+        grid_size = interpob['grid_size']
+        im_size = interpob['im_size']
+        norm = interpob['norm']
+        im_rank = interpob.get('im_rank', 2)
 
-    x = scale_and_fft_on_image_volume(
-        x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
-
-    y = kbinterp(x, om, interpob, interp_mats)
-
-    def grad(dy):
-        x = adjkbinterp(dy, om, interpob, interp_mats)
-        x = ifft_and_scale_on_gridded_data(
-            x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
-        return x, None, None, None, None
-
-    return y, grad
-
-@tf.function
-@tf.custom_gradient
-def kbnufft_adjoint(y, om, interpob, interp_mats=None):
-    """Interpolate from scattered data to gridded data and then iFFT.
-
-    Inputs are assumed to be batch/chans x coil x real/imag x kspace
-    length. Om should be nbatch x ndims x klength.
-
-    Args:
-        y (tensor): The off-grid signal.
-        om (tensor, optional): The off-grid coordinates in radians/voxel.
-        interp_mats (dict, default=None): A dictionary with keys
-            'real_interp_mats' and 'imag_interp_mats', each key containing
-            a list of interpolation matrices (see
-            mri.sparse_interp_mat.precomp_sparse_mats for construction).
-            If None, then a standard interpolation is run.
-
-    Returns:
-        tensor: The image after adjoint NUFFT.
-    """
-    x = adjkbinterp(y, om, interpob, interp_mats)
-
-    scaling_coef = interpob['scaling_coef']
-    grid_size = interpob['grid_size']
-    im_size = interpob['im_size']
-    norm = interpob['norm']
-    im_rank = interpob.get('im_rank', 2)
-
-    x = ifft_and_scale_on_gridded_data(
-        x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
-
-    def grad(dx):
         x = scale_and_fft_on_image_volume(
-            dx, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+            x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
 
         y = kbinterp(x, om, interpob, interp_mats)
 
-        return y, None, None, None
-    return x, grad
+        def grad(dy):
+            x = adjkbinterp(dy, om, interpob, interp_mats)
+            x = ifft_and_scale_on_gridded_data(
+                x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+            return x, None, None, None, None
+
+        return y, grad
+    return kbnufft_forward_for_interpob
+
+def kbnufft_adjoint(interpob, interp_mats=None):
+    @tf.function
+    @tf.custom_gradient
+    def kbnufft_adjoint_for_interpob(y, om):
+        """Interpolate from scattered data to gridded data and then iFFT.
+
+        Inputs are assumed to be batch/chans x coil x real/imag x kspace
+        length. Om should be nbatch x ndims x klength.
+
+        Args:
+            y (tensor): The off-grid signal.
+            om (tensor, optional): The off-grid coordinates in radians/voxel.
+            interp_mats (dict, default=None): A dictionary with keys
+                'real_interp_mats' and 'imag_interp_mats', each key containing
+                a list of interpolation matrices (see
+                mri.sparse_interp_mat.precomp_sparse_mats for construction).
+                If None, then a standard interpolation is run.
+
+        Returns:
+            tensor: The image after adjoint NUFFT.
+        """
+        x = adjkbinterp(y, om, interpob, interp_mats)
+
+        scaling_coef = interpob['scaling_coef']
+        grid_size = interpob['grid_size']
+        im_size = interpob['im_size']
+        norm = interpob['norm']
+        im_rank = interpob.get('im_rank', 2)
+
+        x = ifft_and_scale_on_gridded_data(
+            x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+
+        def grad(dx):
+            x = scale_and_fft_on_image_volume(
+                dx, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+
+            y = kbinterp(x, om, interpob, interp_mats)
+
+            return y, None, None, None
+        return x, grad
+    return kbnufft_adjoint_for_interpob
 
 
 # class ToepNufft(KbModule):

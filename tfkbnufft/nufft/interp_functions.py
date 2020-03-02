@@ -291,30 +291,30 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
     Returns:
         tensor: The signal interpolated to on-grid locations.
     """
-    y = y.clone()
 
     n_shift = interpob['n_shift']
-    grid_size = interpob['grid_size']
-    numpoints = interpob['numpoints']
 
-    dtype = interpob['table'][0].dtype
-    device = interpob['table'][0].device
-
-    ndims = om.shape[1]
-
-    # convert to normalized freq locs
-    tm = torch.zeros(size=om.shape, dtype=dtype, device=device)
-    Jgen = []
-    for i in range(ndims):
-        gam = 2 * np.pi / grid_size[i]
-        tm[:, i, :] = om[:, i, :] / gam
-        Jgen.append(range(np.array(numpoints[i].cpu(), np.int)))
-
-    # build an iterator for going over all J values
-    Jgen = list(itertools.product(*Jgen))
-    Jgen = torch.tensor(Jgen).permute(1, 0).to(dtype=torch.long, device=device)
-
+    # TODO: refactor with kbinterp
     if interp_mats is None:
+        grid_size = interpob['grid_size']
+        numpoints = interpob['numpoints']
+        ndims = om.shape[1]
+
+        # convert to normalized freq locs
+        # the frequencies are originally in [-pi; pi]
+        # we put them in [-grid_size/2; grid_size/2]
+        pi = tf.constant(m.pi)
+        tm = om * grid_size[None, :, None] / tf.cast(2 * pi, 'float64')
+        Jgen = []
+        for i in range(ndims):
+            # number of points to use for interpolation is numpoints
+            Jgen.append(tf.range(numpoints[i]))
+        # build an iterator for going over all J values
+        # this might need some revamp in case we can't use itertools:
+        # - either use a tf py function if possible
+        # - or use the answers provided https://stackoverflow.com/questions/47132665/cartesian-product-in-tensorflow
+        Jgen = list(itertools.product(*Jgen))
+        Jgen = tf.cast(tf.convert_to_tensor(Jgen), 'int64')
         # set up params if not using sparse mats
         params = {
             'dims': None,
@@ -323,28 +323,17 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
             'Jlist': Jgen,
             'table_oversamp': interpob['table_oversamp'],
         }
-    else:
-        # make sure we're on the right device
-        for real_mat in interp_mats['real_interp_mats']:
-            assert real_mat.device == device
-        for imag_mat in interp_mats['imag_interp_mats']:
-            assert imag_mat.device == device
 
     x = []
     # run the table interpolator for each batch element
     for b in range(y.shape[0]):
         # phase for fftshift
-        y[b] = conj_complex_mult(
-            y[b],
-            imag_exp(torch.mv(torch.transpose(
-                om[b], 1, 0), n_shift)).unsqueeze(0),
-            dim=1
-        )
+        y_shifted = y[b] * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), 'complex128'))[None, ...])
 
         if interp_mats is None:
-            params['dims'] = grid_size.to(dtype=torch.long, device=device)
+            params['dims'] = tf.cast(grid_size, 'int64')
 
-            x.append(run_interp_back(y[b], tm[b], params))
+            x.append(run_interp_back(y_shifted, tm[b], params))
         else:
             x.append(
                 run_mat_interp_back(
@@ -354,12 +343,12 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
                 )
             )
 
-    x = torch.stack(x)
+    x = tf.stack(x)
 
     bsize = y.shape[0]
     ncoil = y.shape[1]
-    out_size = (bsize, ncoil, 2) + tuple(grid_size.to(torch.long))
+    out_size = tf.concat([[bsize, ncoil], tf.cast(grid_size, 'int64')], 0)
 
-    x = x.view(out_size)
+    x = tf.reshape(x, out_size)
 
     return x

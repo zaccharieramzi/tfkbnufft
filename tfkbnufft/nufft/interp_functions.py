@@ -299,12 +299,15 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
     """
 
     n_shift = interpob['n_shift']
+    n_shift = tf.cast(n_shift, om.dtype)
     im_rank = interpob.get('im_rank', 2)
 
     # TODO: refactor with kbinterp
     if interp_mats is None:
         grid_size = interpob['grid_size']
+        grid_size = tf.cast(grid_size, om.dtype)
         numpoints = interpob['numpoints']
+        numpoints = tf.cast(numpoints, om.dtype)
         ndims = om.shape[1]
 
         # convert to normalized freq locs

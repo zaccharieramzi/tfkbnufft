@@ -175,7 +175,7 @@ def run_interp_back(kdat, tm, params):
     for J in Jlist:
         coef, arr_ind = calc_coef_and_indices(
             tm, kofflist, J, table, centers, L, dims, conjcoef=True)
-
+        coef = tf.cast(coef, kdat.dtype)
         updates = tf.transpose(coef[None, ...] * kdat)
         # TODO: change because the array of indexes was only in one dimension
         arr_ind = arr_ind[:, None]

@@ -1,6 +1,5 @@
 import tensorflow as tf
 
-@tf.function
 def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
     """Applies the FFT and any relevant scaling factors to x.
 
@@ -49,7 +48,6 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
 
     return x
 
-@tf.function
 def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
     """Applies the iFFT and any relevant scaling factors to x.
 

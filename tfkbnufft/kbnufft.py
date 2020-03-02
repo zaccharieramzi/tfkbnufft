@@ -163,6 +163,7 @@ class KbNufft(KbNufftModule):
     def __init__(self, *args, **kwargs):
         super(KbNufft, self).__init__(*args, **kwargs)
 
+    @tf.function
     def forward(self, x, om, interp_mats=None):
         """Apply FFT and interpolate from gridded data to scattered data.
 
@@ -227,6 +228,7 @@ class AdjKbNufft(KbNufftModule):
     def __init__(self, *args, **kwargs):
         super(AdjKbNufft, self).__init__(*args, **kwargs)
 
+    @tf.function
     def forward(self, y, om, interp_mats=None):
         """Interpolate from scattered data to gridded data and then iFFT.
 

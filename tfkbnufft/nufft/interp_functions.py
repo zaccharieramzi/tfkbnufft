@@ -266,7 +266,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
             )
 
         # phase for fftshift
-        y.write(
+        y = y.write(
             b,
             y_not_shifted * tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), y_not_shifted.dtype))[None, ...],
         )
@@ -345,7 +345,7 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
         if interp_mats is None:
             params['dims'] = tf.cast(grid_size, 'int64')
 
-            x.write(b, run_interp_back(y_shifted, tm[b], params))
+            x = x.write(b, run_interp_back(y_shifted, tm[b], params))
         else:
             x.append(
                 run_mat_interp_back(

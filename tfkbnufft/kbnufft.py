@@ -40,6 +40,7 @@ class KbNufftModule(KbModule):
         super(KbNufftModule, self).__init__()
 
         self.im_size = im_size
+        self.im_rank = len(im_size)
         if grid_size is None:
             self.grid_size = tuple(np.array(self.im_size) * 2)
         else:
@@ -194,9 +195,9 @@ class KbNufft(KbNufftModule):
         norm = interpob['norm']
 
         x = scale_and_fft_on_image_volume(
-            x, scaling_coef, grid_size, im_size, norm)
+            x, scaling_coef, grid_size, im_size, norm, im_rank=self.im_rank)
 
-        y = kbinterp(x, om, interpob, interp_mats)
+        y = kbinterp(x, om, interpob, interp_mats, im_rank=self.im_rank)
 
         return y
 
@@ -250,7 +251,7 @@ class AdjKbNufft(KbNufftModule):
         interpob = self._extract_nufft_interpob()
 
         # x = AdjKbNufftFunction.apply(y, om, interpob, interp_mats)
-        x = adjkbinterp(y, om, interpob, interp_mats)
+        x = adjkbinterp(y, om, interpob, interp_mats, im_rank=self.im_rank)
 
         scaling_coef = interpob['scaling_coef']
         grid_size = interpob['grid_size']
@@ -258,7 +259,7 @@ class AdjKbNufft(KbNufftModule):
         norm = interpob['norm']
 
         x = ifft_and_scale_on_gridded_data(
-            x, scaling_coef, grid_size, im_size, norm)
+            x, scaling_coef, grid_size, im_size, norm, im_rank=self.im_rank)
 
         return x
 

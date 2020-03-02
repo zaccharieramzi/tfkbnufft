@@ -1,9 +1,9 @@
-import itertools
 import math as m
 
 import numpy as np
 import tensorflow as tf
 
+from ..utils.itertools import product
 
 def run_mat_interp(griddat, coef_mat):
     """Interpolates griddat to off-grid coordinates with input sparse matrices.
@@ -184,7 +184,7 @@ def run_interp_back(kdat, tm, params):
     return griddat
 
 
-def kbinterp(x, om, interpob, interp_mats=None):
+def kbinterp(x, om, interpob, interp_mats=None, im_rank=2):
     """Apply table interpolation.
 
     Inputs are assumed to be batch/chans x coil x real/imag x image dims.
@@ -228,11 +228,8 @@ def kbinterp(x, om, interpob, interp_mats=None):
             # number of points to use for interpolation is numpoints
             Jgen.append(tf.range(numpoints[i]))
         # build an iterator for going over all J values
-        # this might need some revamp in case we can't use itertools:
-        # - either use a tf py function if possible
-        # - or use the answers provided https://stackoverflow.com/questions/47132665/cartesian-product-in-tensorflow
-        Jgen = list(itertools.product(*Jgen))
-        Jgen = tf.cast(tf.convert_to_tensor(Jgen), 'int64')
+        Jgen = product(Jgen, im_rank)
+        Jgen = tf.cast(Jgen, 'int64')
         # set up params if not using sparse mats
         params = {
             'dims': None,
@@ -272,7 +269,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
     return y
 
 
-def adjkbinterp(y, om, interpob, interp_mats=None):
+def adjkbinterp(y, om, interpob, interp_mats=None, im_rank=2):
     """Apply table interpolation adjoint.
 
     Inputs are assumed to be batch/chans x coil x real/imag x kspace length.
@@ -313,11 +310,8 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
             # number of points to use for interpolation is numpoints
             Jgen.append(tf.range(numpoints[i]))
         # build an iterator for going over all J values
-        # this might need some revamp in case we can't use itertools:
-        # - either use a tf py function if possible
-        # - or use the answers provided https://stackoverflow.com/questions/47132665/cartesian-product-in-tensorflow
-        Jgen = list(itertools.product(*Jgen))
-        Jgen = tf.cast(tf.convert_to_tensor(Jgen), 'int64')
+        Jgen = product(Jgen, im_rank)
+        Jgen = tf.cast(Jgen, 'int64')
         # set up params if not using sparse mats
         params = {
             'dims': None,

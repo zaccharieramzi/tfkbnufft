@@ -356,8 +356,8 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
 
     x = x.stack()
 
-    bsize = y.shape[0]
-    ncoil = y.shape[1]
+    bsize = tf.shape(y)[0]
+    ncoil = tf.shape(y)[1]
     out_size = tf.concat([[bsize, ncoil], tf.cast(grid_size, 'int64')], 0)
 
     x = tf.reshape(x, out_size)

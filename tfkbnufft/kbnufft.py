@@ -136,7 +136,7 @@ class KbNufftModule(KbModule):
 
         return interpob
 
-def kbnufft_forward(interpob, interp_mats=None):
+def kbnufft_forward(interpob):
     @tf.function
     @tf.custom_gradient
     def kbnufft_forward_for_interpob(x, om):
@@ -170,18 +170,18 @@ def kbnufft_forward(interpob, interp_mats=None):
         x = scale_and_fft_on_image_volume(
             x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
 
-        y = kbinterp(x, om, interpob, interp_mats)
+        y = kbinterp(x, om, interpob)
 
         def grad(dy):
-            x = adjkbinterp(dy, om, interpob, interp_mats)
+            x = adjkbinterp(dy, om, interpob)
             x = ifft_and_scale_on_gridded_data(
                 x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
-            return x, None, None, None, None
+            return x, None
 
         return y, grad
     return kbnufft_forward_for_interpob
 
-def kbnufft_adjoint(interpob, interp_mats=None):
+def kbnufft_adjoint(interpob):
     @tf.function
     @tf.custom_gradient
     def kbnufft_adjoint_for_interpob(y, om):
@@ -202,7 +202,7 @@ def kbnufft_adjoint(interpob, interp_mats=None):
         Returns:
             tensor: The image after adjoint NUFFT.
         """
-        x = adjkbinterp(y, om, interpob, interp_mats)
+        x = adjkbinterp(y, om, interpob)
 
         scaling_coef = interpob['scaling_coef']
         grid_size = interpob['grid_size']
@@ -217,9 +217,9 @@ def kbnufft_adjoint(interpob, interp_mats=None):
             x = scale_and_fft_on_image_volume(
                 dx, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
 
-            y = kbinterp(x, om, interpob, interp_mats)
+            y = kbinterp(x, om, interpob)
 
-            return y, None, None, None
+            return y, None
         return x, grad
     return kbnufft_adjoint_for_interpob
 

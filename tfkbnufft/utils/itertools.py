@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+# TODO: refactor this
 @tf.function
 def product(tensors, n_tensors):
     # inspired by

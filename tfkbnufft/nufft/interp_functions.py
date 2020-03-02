@@ -206,12 +206,13 @@ def kbinterp(x, om, interpob, interp_mats=None):
     Returns:
         tensor: The signal interpolated to off-grid locations.
     """
-
+    # TODO: get rid of interp mats
     # extract interpolation params
     n_shift = interpob['n_shift']
     n_shift = tf.cast(n_shift, om.dtype)
     im_rank = interpob.get('im_rank', 2)
     if interp_mats is None:
+        # TODO: refactor all of this with adjkbinterp
         grid_size = interpob['grid_size']
         grid_size = tf.cast(grid_size, om.dtype)
         numpoints = interpob['numpoints']
@@ -245,7 +246,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
         dtype=x.dtype,
     )
     # run the table interpolator for each batch element
-    # TODO: look into how to use tf.scan
+    # TODO: look into how to use tf.while_loop
     for b in tf.range(tf.shape(x)[0]):
         if interp_mats is None:
             params['dims'] = tf.cast(tf.shape(x[b])[1:], 'int64')
@@ -298,7 +299,7 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
     Returns:
         tensor: The signal interpolated to on-grid locations.
     """
-
+    # TODO: get rid of interp mats
     n_shift = interpob['n_shift']
     n_shift = tf.cast(n_shift, om.dtype)
     im_rank = interpob.get('im_rank', 2)
@@ -338,6 +339,7 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
         dtype=y.dtype,
     )
     # run the table interpolator for each batch element
+    # TODO: look into how to use tf.while_loop
     for b in tf.range(tf.shape(y)[0]):
         # phase for fftshift
         y_shifted = y[b] * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), y[b].dtype))[None, ...])

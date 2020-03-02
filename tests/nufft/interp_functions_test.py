@@ -32,9 +32,6 @@ def setup():
     grid_size = grid_size.astype('float')
     return tm, Jgen, table, numpoints, L, grid_size
 
-def setup_run_interp():
-    pass
-
 
 @pytest.mark.parametrize('conjcoef', [True, False])
 def test_calc_coef_and_indices(conjcoef):
@@ -134,5 +131,37 @@ def test_kbinterp(n_coil):
     res_torch = torch_interp_functions.kbinterp(*torch_args)
     tf_args = [to_tf_arg(arg) for arg in args]
     res_tf = tf_interp_functions.kbinterp(*tf_args)
+    # those tols seem like a lot, but for now it'll do
+    np.testing.assert_allclose(torch_to_numpy(res_torch, complex_dim=2), res_tf.numpy(), rtol=1e-1, atol=2*1e-2)
+
+@pytest.mark.parametrize('n_coil', [1, 2, 5, 16])
+def test_adjkbinterp(n_coil):
+    tm, _, table, numpoints, L, grid_size = setup()
+    num_samples = tm.shape[1]
+    grid_size = grid_size.astype('int')
+    y = np.stack([
+        np.random.randn(num_samples) + 1j * np.random.randn(num_samples)
+        for i in range(n_coil)
+    ])[None, ...]  # adding batch dimension
+    tm = tm[None, ...]  # adding batch dimension
+    n_shift = np.array((grid_size//2) // 2).astype('float')
+    interpob = {
+        'grid_size': grid_size.astype('float'),
+        'table': table,
+        'numpoints': numpoints,
+        'table_oversamp': L,
+        'n_shift': n_shift,
+    }
+    om = np.zeros_like(tm)
+    for i in range(tm.shape[1]):
+        gam = (2 * np.pi / grid_size[i])
+        om[:, i, :] = tm[:, i, :] * gam
+    args = [y, om, interpob]
+    torch_args = [to_torch_arg(arg) for arg in args]
+    # I need this because griddat is first nbatch, n_coil then real/imag
+    torch_args[0] = torch_args[0].permute(1, 2, 0, 3)
+    res_torch = torch_interp_functions.adjkbinterp(*torch_args)
+    tf_args = [to_tf_arg(arg) for arg in args]
+    res_tf = tf_interp_functions.adjkbinterp(*tf_args)
     # those tols seem like a lot, but for now it'll do
     np.testing.assert_allclose(torch_to_numpy(res_torch, complex_dim=2), res_tf.numpy(), rtol=1e-1, atol=2*1e-2)

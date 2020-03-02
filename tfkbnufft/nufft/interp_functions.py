@@ -153,6 +153,7 @@ def run_interp_back(kdat, tm, params):
     numpoints = params['numpoints']
     Jlist = params['Jlist']
     L = params['table_oversamp']
+    L = tf.cast(L, tm.dtype)
 
     # extract data types
     int_type = tf.int64
@@ -333,8 +334,8 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
 
     x = tf.TensorArray(y.dtype, tf.shape(y)[0])
     y_shifted = tf.zeros(
-        shape=(tf.shape(x)[1], tf.cast(tf.reduce_prod(grid_size), tf.int32)),
-        dtype=x.dtype,
+        shape=(tf.shape(y)[1], tf.cast(tf.reduce_prod(grid_size), tf.int32)),
+        dtype=y.dtype,
     )
     # run the table interpolator for each batch element
     for b in tf.range(tf.shape(y)[0]):

@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
+def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_rank=2):
     """Applies the FFT and any relevant scaling factors to x.
 
     Args:
@@ -25,11 +25,8 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
         (0, grid_size[0] - im_size[0]),  # nx
         (0, grid_size[1] - im_size[1]),  # ny
     ]
-    # TODO: handle the dim3 case:
-    # - either have answer to https://stackoverflow.com/questions/60493396/is-it-possible-to-have-a-test-on-tensor-size-inside-a-tensorflow-tf-function
-    # - or generate pad size beforehand
-    # if tf.size(grid_size) == 3:
-    #     pad_sizes += [(0, grid_size[2] - im_size[2])]  # nz
+    if im_rank == 3:
+        pad_sizes += [(0, grid_size[2] - im_size[2])]  # nz
     scaling_coef = tf.cast(scaling_coef, x.dtype)
     scaling_coef = scaling_coef[None, None, ...]
     # multiply by scaling coefs
@@ -38,7 +35,7 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
     # zero pad and fft
     x = tf.pad(x, pad_sizes)
     # this might have to be a tf py function, or I could use tf cond
-    if tf.size(grid_size) == 2:
+    if im_rank == 2:
         x = tf.signal.fft2d(x)
     else:
         x = tf.signal.fft3d(x)
@@ -48,7 +45,7 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
 
     return x
 
-def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
+def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im_rank=2):
     """Applies the iFFT and any relevant scaling factors to x.
 
     Args:
@@ -66,15 +63,15 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
     # we don't need permutations since the fft in fourier is done on the
     # innermost dimensions and we are handling complex tensors
     # do the inverse fft
-    if tf.size(grid_size) == 2:
+    if im_rank == 2:
         x = tf.signal.ifft2d(x)
-    # else:
-    #     x = tf.signal.ifft3d(x)
+    else:
+        x = tf.signal.ifft3d(x)
 
     # crop to output size
     x = x[:, :, :int(im_size[0]), :int(im_size[1])]
-    # if tf.size(grid_size) == 3:
-    #     x = x[..., :int(im_size[2])]
+    if im_rank == 3:
+        x = x[..., :int(im_size[2])]
 
     # scaling
     scaling_factor = tf.cast(tf.reduce_prod(grid_size), x.dtype)

@@ -219,7 +219,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
         # the frequencies are originally in [-pi; pi]
         # we put them in [-grid_size/2; grid_size/2]
         pi = tf.constant(m.pi)
-        tm = om * grid_size[None, :, None] / tf.cast(2 * pi, 'float64')
+        tm = om * grid_size[None, :, None] / tf.cast(2 * pi, om.dtype)
         Jgen = []
         for i in range(ndims):
             # number of points to use for interpolation is numpoints
@@ -262,7 +262,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
             )
 
         # phase for fftshift
-        y[-1] = y[-1] * tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), 'complex128'))[None, ...]
+        y[-1] = y[-1] * tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), y[-1].dtype))[None, ...]
 
     y = tf.stack(y)
 
@@ -304,7 +304,7 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
         # the frequencies are originally in [-pi; pi]
         # we put them in [-grid_size/2; grid_size/2]
         pi = tf.constant(m.pi)
-        tm = om * grid_size[None, :, None] / tf.cast(2 * pi, 'float64')
+        tm = om * grid_size[None, :, None] / tf.cast(2 * pi, om.dtype)
         Jgen = []
         for i in range(ndims):
             # number of points to use for interpolation is numpoints
@@ -328,7 +328,7 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
     # run the table interpolator for each batch element
     for b in range(y.shape[0]):
         # phase for fftshift
-        y_shifted = y[b] * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), 'complex128'))[None, ...])
+        y_shifted = y[b] * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), y[b].dtype))[None, ...])
 
         if interp_mats is None:
             params['dims'] = tf.cast(grid_size, 'int64')

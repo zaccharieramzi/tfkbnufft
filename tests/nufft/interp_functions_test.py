@@ -9,7 +9,6 @@ from tfkbnufft.nufft import interp_functions as tf_interp_functions
 from ..utils import to_torch_arg, torch_to_numpy, to_tf_arg
 
 def setup():
-    # TODO: test with multicoils, i.e griddat = np.stack([griddat]*n_coils)
     grid_size = np.array([800, 800])
     im_size = grid_size / 2
     n_samples = 324000

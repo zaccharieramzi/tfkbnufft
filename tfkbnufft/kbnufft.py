@@ -101,32 +101,17 @@ class KbNufftModule(KbModule):
                 'matadj will be deprecated in a future release',
                 DeprecationWarning)
 
-        self.register_buffer(
-            'scaling_coef_tensor',
-            torch.stack(
-                (
-                    torch.tensor(np.real(self.scaling_coef)),
-                    torch.tensor(np.imag(self.scaling_coef))
-                )
-            )
-        )
-        for i, item in enumerate(self.table):
-            self.register_buffer(
-                'table_tensor_' + str(i),
-                torch.tensor(np.stack((np.real(item), np.imag(item))))
-            )
+        self.scaling_coef_tensor = tf.convert_to_tensor(self.scaling_coef)
+        self.table_tensors = []
+        for item in self.table:
+            self.table_tensors.append(tf.convert_to_tensor(item))
         # register buffer is not necessary in tf, you just have the variable in
         # your class, point.
-        self.register_buffer('n_shift_tensor', torch.tensor(
-            np.array(self.n_shift, dtype=np.double)))
-        self.register_buffer('grid_size_tensor', torch.tensor(
-            np.array(self.grid_size, dtype=np.double)))
-        self.register_buffer('im_size_tensor', torch.tensor(
-            np.array(self.im_size, dtype=np.double)))
-        self.register_buffer('numpoints_tensor', torch.tensor(
-            np.array(self.numpoints, dtype=np.double)))
-        self.register_buffer('table_oversamp_tensor', torch.tensor(
-            np.array(self.table_oversamp, dtype=np.double)))
+        self.n_shift_tensor = tf.convert_to_tensor(np.array(self.n_shift, dtype=np.double))
+        self.grid_size_tensor = tf.convert_to_tensor(np.array(self.grid_size, dtype=np.double))
+        self.im_size_tensor = tf.convert_to_tensor(np.array(self.im_size, dtype=np.double))
+        self.numpoints_tensor = tf.convert_to_tensor(np.array(self.numpoints, dtype=np.double))
+        self.table_oversamp_tensor = tf.convert_to_tensor(np.array(self.table_oversamp, dtype=np.double))
 
     def _extract_nufft_interpob(self):
         """Extracts interpolation object from self.
@@ -136,9 +121,7 @@ class KbNufftModule(KbModule):
         """
         interpob = dict()
         interpob['scaling_coef'] = self.scaling_coef_tensor
-        interpob['table'] = []
-        for i in range(len(self.table)):
-            interpob['table'].append(getattr(self, 'table_tensor_' + str(i)))
+        interpob['table'] = self.table_tensors
         interpob['n_shift'] = self.n_shift_tensor
         interpob['grid_size'] = self.grid_size_tensor
         interpob['im_size'] = self.im_size_tensor

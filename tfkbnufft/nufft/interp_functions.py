@@ -176,10 +176,10 @@ def run_interp_back(kdat, tm, params):
         coef, arr_ind = calc_coef_and_indices(
             tm, kofflist, J, table, centers, L, dims, conjcoef=True)
 
-        updates = coef[None, ...] * kdat
+        updates = tf.transpose(coef[None, ...] * kdat)
         # TODO: change because the array of indexes was only in one dimension
-        arr_ind = arr_ind
-        tf.tensor_scatter_nd_add(griddat, arr_ind, updates)
+        arr_ind = arr_ind[:, None]
+        griddat = tf.transpose(tf.tensor_scatter_nd_add(tf.transpose(griddat), arr_ind, updates))
 
     return griddat
 

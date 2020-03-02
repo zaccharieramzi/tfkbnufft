@@ -3,9 +3,11 @@ import warnings
 import numpy as np
 import tensorflow as tf
 
-from .functional.kbnufft import AdjKbNufftFunction, KbNufftFunction
+# from .functional.kbnufft import AdjKbNufftFunction, KbNufftFunction
                                  # ToepNufftFunction)
 from .kbmodule import KbModule
+from .nufft.fft_functions import scale_and_fft_on_image_volume, ifft_and_scale_on_gridded_data
+from .nufft.interp_functions import kbinterp, adjkbinterp
 from .nufft.utils import build_spmatrix, build_table, compute_scaling_coefs
 
 
@@ -182,7 +184,18 @@ class KbNufft(KbNufftModule):
         """
         interpob = self._extract_nufft_interpob()
 
-        y = KbNufftFunction.apply(x, om, interpob, interp_mats)
+        # this is with registered gradient, I would like to try without
+        # y = KbNufftFunction.apply(x, om, interpob, interp_mats)
+        # extract interpolation params
+        scaling_coef = interpob['scaling_coef']
+        grid_size = interpob['grid_size']
+        im_size = interpob['im_size']
+        norm = interpob['norm']
+
+        x = scale_and_fft_on_image_volume(
+            x, scaling_coef, grid_size, im_size, norm)
+
+        y = kbinterp(x, om, interpob, interp_mats)
 
         return y
 
@@ -234,46 +247,55 @@ class AdjKbNufft(KbNufftModule):
         """
         interpob = self._extract_nufft_interpob()
 
-        x = AdjKbNufftFunction.apply(y, om, interpob, interp_mats)
+        # x = AdjKbNufftFunction.apply(y, om, interpob, interp_mats)
+        x = adjkbinterp(y, om, interpob, interp_mats)
+
+        scaling_coef = interpob['scaling_coef']
+        grid_size = interpob['grid_size']
+        im_size = interpob['im_size']
+        norm = interpob['norm']
+
+        x = ifft_and_scale_on_gridded_data(
+            x, scaling_coef, grid_size, im_size, norm)
 
         return x
 
 
-class ToepNufft(KbModule):
-    """Forward/backward NUFFT with Toeplitz embedding.
-
-    This module applies Tx, where T is a matrix such that T = A'A, where A is
-    a NUFFT matrix. Using Toeplitz embedding, this module computes the A'A
-    operation without interpolations, which is extremely fast.
-
-    The module is intended to be used in combination with an fft kernel
-    computed to be the frequency response of an embedded Toeplitz matrix. The
-    kernel is calculated offline via
-
-    torchkbnufft.nufft.toep_functions.calc_toep_kernel
-
-    The corresponding kernel is then passed to this module in its forward
-    forward operation, which applies a (zero-padded) fft filter using the
-    kernel.
-    """
-
-    def __init__(self):
-        super(ToepNufft, self).__init__()
-
-    def forward(self, x, kern, norm=None):
-        """Toeplitz NUFFT forward function.
-
-        Args:
-            x (tensor): The image (or images) to apply the forward/backward
-                Toeplitz-embedded NUFFT to.
-            kern (tensor): The filter response taking into account Toeplitz
-                embedding.
-            norm (str, default=None): Use 'ortho' if kern was designed to use
-                orthogonal FFTs.
-
-        Returns:
-            tensor: x after applying the Toeplitz NUFFT.
-        """
-        x = ToepNufftFunction.apply(x, kern, norm)
-
-        return x
+# class ToepNufft(KbModule):
+#     """Forward/backward NUFFT with Toeplitz embedding.
+#
+#     This module applies Tx, where T is a matrix such that T = A'A, where A is
+#     a NUFFT matrix. Using Toeplitz embedding, this module computes the A'A
+#     operation without interpolations, which is extremely fast.
+#
+#     The module is intended to be used in combination with an fft kernel
+#     computed to be the frequency response of an embedded Toeplitz matrix. The
+#     kernel is calculated offline via
+#
+#     torchkbnufft.nufft.toep_functions.calc_toep_kernel
+#
+#     The corresponding kernel is then passed to this module in its forward
+#     forward operation, which applies a (zero-padded) fft filter using the
+#     kernel.
+#     """
+#
+#     def __init__(self):
+#         super(ToepNufft, self).__init__()
+#
+#     def forward(self, x, kern, norm=None):
+#         """Toeplitz NUFFT forward function.
+#
+#         Args:
+#             x (tensor): The image (or images) to apply the forward/backward
+#                 Toeplitz-embedded NUFFT to.
+#             kern (tensor): The filter response taking into account Toeplitz
+#                 embedding.
+#             norm (str, default=None): Use 'ortho' if kern was designed to use
+#                 orthogonal FFTs.
+#
+#         Returns:
+#             tensor: x after applying the Toeplitz NUFFT.
+#         """
+#         x = ToepNufftFunction.apply(x, kern, norm)
+#
+#         return x

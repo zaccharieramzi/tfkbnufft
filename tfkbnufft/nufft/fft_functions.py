@@ -1,10 +1,6 @@
-import numpy as np
 import tensorflow as tf
 
-# TODO: all the permute dims were created with the problem that torch doesn't
-# support complex tensors. They have to be rethought without this.
-# I think it basically amounts to removing the 2 dimension, and then lowering
-# the rest of 1 if above.
+@tf.function
 def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
     """Applies the FFT and any relevant scaling factors to x.
 
@@ -27,13 +23,16 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
         (0, 0),  # batch dimension
         (0, 0),  # coil dimension
     ] + [
-        (0, grid_dim - im_dim)  # spatial dimensions
-        for (grid_dim, im_dim) in zip(grid_size, im_size)
+        (0, grid_size[0] - im_size[0]),  # nx
+        (0, grid_size[1] - im_size[1]),  # ny
     ]
-    # TODO: to allow broadcasting
-    while len(scaling_coef.shape) < len(x.shape):
-        scaling_coef = tf.cast(scaling_coef[None, ...], x.dtype)
-
+    # TODO: handle the dim3 case:
+    # - either have answer to https://stackoverflow.com/questions/60493396/is-it-possible-to-have-a-test-on-tensor-size-inside-a-tensorflow-tf-function
+    # - or generate pad size beforehand
+    # if tf.size(grid_size) == 3:
+    #     pad_sizes += [(0, grid_size[2] - im_size[2])]  # nz
+    scaling_coef = tf.cast(scaling_coef, x.dtype)
+    scaling_coef = scaling_coef[None, None, ...]
     # multiply by scaling coefs
     x = x * scaling_coef
 
@@ -50,7 +49,7 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
 
     return x
 
-
+@tf.function
 def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
     """Applies the iFFT and any relevant scaling factors to x.
 
@@ -87,9 +86,8 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
         x = x * scaling_factor
 
     # scaling coefficient multiply
-    # this might have to be revised, or the whole thing put in a tf py function
-    while len(scaling_coef.shape) < len(x.shape):
-        scaling_coef = tf.cast(scaling_coef[None, ...], x.dtype)
+    scaling_coef = tf.cast(scaling_coef, x.dtype)
+    scaling_coef = scaling_coef[None, None, ...]
 
     x = x * tf.math.conj(scaling_coef)
     # this might be nice to try at some point more like an option rather

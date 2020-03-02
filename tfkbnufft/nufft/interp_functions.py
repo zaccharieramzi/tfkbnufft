@@ -1,4 +1,5 @@
 import itertools
+import math as m
 
 import numpy as np
 import tensorflow as tf
@@ -209,11 +210,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
     # extract interpolation params
     n_shift = interpob['n_shift']
 
-
-
-
     if interp_mats is None:
-        dtype = interpob['table'][0].dtype
         grid_size = interpob['grid_size']
         numpoints = interpob['numpoints']
         ndims = om.shape[1]
@@ -221,11 +218,10 @@ def kbinterp(x, om, interpob, interp_mats=None):
         # convert to normalized freq locs
         # the frequencies are originally in [-pi; pi]
         # we put them in [-grid_size/2; grid_size/2]
-        tm = tf.zeros(shape=om.shape, dtype=dtype)
+        pi = tf.constant(m.pi)
+        tm = om * grid_size[None, :, None] / tf.cast(2 * pi, 'float64')
         Jgen = []
         for i in range(ndims):
-            gam = (2 * np.pi / grid_size[i])
-            tm[:, i, :] = om[:, i, :] / gam
             # number of points to use for interpolation is numpoints
             Jgen.append(tf.range(numpoints[i]))
         # build an iterator for going over all J values
@@ -233,7 +229,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
         # - either use a tf py function if possible
         # - or use the answers provided https://stackoverflow.com/questions/47132665/cartesian-product-in-tensorflow
         Jgen = list(itertools.product(*Jgen))
-        Jgen = tf.convert_to_tensor(Jgen)
+        Jgen = tf.cast(tf.convert_to_tensor(Jgen), 'int64')
         # set up params if not using sparse mats
         params = {
             'dims': None,
@@ -248,7 +244,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
     # TODO: look into how to use tf.scan
     for b in range(x.shape[0]):
         if interp_mats is None:
-            params['dims'] = tf.shape(x[b])[1:]
+            params['dims'] = tf.cast(tf.shape(x[b])[1:], 'int64')
             # tm are the localized frequency locations
             # view(x.shape[1], 2, -1) allows to have the values of each point
             # on the grid in a list, (x.shape[1] is the number of coils and 2
@@ -266,7 +262,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
             )
 
         # phase for fftshift
-        y[-1] = y[-1] * tf.exp(1j * tf.linalg.matvec(om[b], n_shift))[None, ...]
+        y[-1] = y[-1] * tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), 'complex128'))[None, ...]
 
     y = tf.stack(y)
 

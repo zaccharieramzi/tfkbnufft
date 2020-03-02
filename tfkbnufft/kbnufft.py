@@ -136,146 +136,88 @@ class KbNufftModule(KbModule):
 
         return interpob
 
+@tf.function
+@tf.custom_gradient
+def kbnufft_forward(x, om, interpob, interp_mats=None):
+    """Apply FFT and interpolate from gridded data to scattered data.
 
-class KbNufft(KbNufftModule):
-    """Non-uniform FFT forward PyTorch module.
-
-    This object applies the FFT and interpolates a grid of Fourier data to
-    off-grid locations using a Kaiser-Bessel kernel. It is implemented as a
-    PyTorch module.
-
-    Args:
-        im_size (int or tuple of ints): Size of base image.
-        grid_size (int or tuple of ints, default=2*im_size): Size of the grid
-            to interpolate from.
-        numpoints (int or tuple of ints, default=6): Number of points to use
-            for interpolation in each dimension. Default is six points in each
-            direction.
-        n_shift (int or tuple of ints, default=im_size//2): Number of points to
-            shift for fftshifts.
-        table_oversamp (int, default=2^10): Table oversampling factor.
-        kbwidth (double, default=2.34): Kaiser-Bessel width parameter.
-        order (double, default=0): Order of Kaiser-Bessel kernel.
-        norm (str, default='None'): Normalization for FFT. Default uses no
-            normalization. Use 'ortho' to use orthogonal FFTs and preserve
-            energy.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(KbNufft, self).__init__(*args, **kwargs)
-
-    @tf.custom_gradient
-    @tf.function
-    def forward(self, x, om, interp_mats=None):
-        """Apply FFT and interpolate from gridded data to scattered data.
-
-        Inputs are assumed to be batch/chans x coil x real/imag x image dims.
-        Om should be nbatch x ndims x klength.
-
-        Args:
-            x (tensor): The original imagel.
-            om (tensor, optional): A new set of omega coordinates at which to
-                calculate the signal in radians/voxel.
-            interp_mats (dict, default=None): A dictionary with keys
-                'real_interp_mats' and 'imag_interp_mats', each key containing
-                a list of interpolation matrices (see
-                mri.sparse_interp_mat.precomp_sparse_mats for construction).
-                If None, then a standard interpolation is run.
-
-        Returns:
-            tensor: x computed at off-grid locations in om.
-        """
-        interpob = self._extract_nufft_interpob()
-
-        # this is with registered gradient, I would like to try without
-        # y = KbNufftFunction.apply(x, om, interpob, interp_mats)
-        # extract interpolation params
-        scaling_coef = interpob['scaling_coef']
-        grid_size = interpob['grid_size']
-        im_size = interpob['im_size']
-        norm = interpob['norm']
-
-        x = scale_and_fft_on_image_volume(
-            x, scaling_coef, grid_size, im_size, norm, im_rank=self.im_rank)
-
-        y = kbinterp(x, om, interpob, interp_mats, im_rank=self.im_rank)
-
-        def grad(dy):
-            x = adjkbinterp(dy, om, interpob, interp_mats)
-
-            return x, None, None, None
-
-        return y, grad
-
-
-class AdjKbNufft(KbNufftModule):
-    """Non-uniform FFT adjoint PyTorch module.
-
-    This object interpolates off-grid Fourier data to on-grid locations
-    using a Kaiser-Bessel kernel prior to inverse DFT. It is implemented as a
-    PyTorch module.
+    Inputs are assumed to be batch/chans x coil x real/imag x image dims.
+    Om should be nbatch x ndims x klength.
 
     Args:
-        im_size (int or tuple of ints): Size of base image.
-        grid_size (int or tuple of ints, default=2*im_size): Size of the grid
-            to interpolate to.
-        numpoints (int or tuple of ints, default=6): Number of points to use
-            for interpolation in each dimension. Default is six points in each
-            direction.
-        n_shift (int or tuple of ints, default=im_size//2): Number of points to
-            shift for fftshifts.
-        table_oversamp (int, default=2^10): Table oversampling factor.
-        kbwidth (double, default=2.34): Kaiser-Bessel width parameter.
-        order (double, default=0): Order of Kaiser-Bessel kernel.
-        norm (str, default='None'): Normalization for FFT. Default uses no
-            normalization. Use 'ortho' to use orthogonal FFTs and preserve
-            energy.
+        x (tensor): The original imagel.
+        om (tensor, optional): A new set of omega coordinates at which to
+            calculate the signal in radians/voxel.
+        interp_mats (dict, default=None): A dictionary with keys
+            'real_interp_mats' and 'imag_interp_mats', each key containing
+            a list of interpolation matrices (see
+            mri.sparse_interp_mat.precomp_sparse_mats for construction).
+            If None, then a standard interpolation is run.
+
+    Returns:
+        tensor: x computed at off-grid locations in om.
     """
+    # this is with registered gradient, I would like to try without
+    # y = KbNufftFunction.apply(x, om, interpob, interp_mats)
+    # extract interpolation params
+    scaling_coef = interpob['scaling_coef']
+    grid_size = interpob['grid_size']
+    im_size = interpob['im_size']
+    norm = interpob['norm']
+    im_rank = interpob.get('im_rank', 2)
 
-    def __init__(self, *args, **kwargs):
-        super(AdjKbNufft, self).__init__(*args, **kwargs)
+    x = scale_and_fft_on_image_volume(
+        x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
 
-    @tf.custom_gradient
-    @tf.function
-    def forward(self, y, om, interp_mats=None):
-        """Interpolate from scattered data to gridded data and then iFFT.
+    y = kbinterp(x, om, interpob, interp_mats)
 
-        Inputs are assumed to be batch/chans x coil x real/imag x kspace
-        length. Om should be nbatch x ndims x klength.
-
-        Args:
-            y (tensor): The off-grid signal.
-            om (tensor, optional): The off-grid coordinates in radians/voxel.
-            interp_mats (dict, default=None): A dictionary with keys
-                'real_interp_mats' and 'imag_interp_mats', each key containing
-                a list of interpolation matrices (see
-                mri.sparse_interp_mat.precomp_sparse_mats for construction).
-                If None, then a standard interpolation is run.
-
-        Returns:
-            tensor: The image after adjoint NUFFT.
-        """
-        interpob = self._extract_nufft_interpob()
-
-        # x = AdjKbNufftFunction.apply(y, om, interpob, interp_mats)
-        x = adjkbinterp(y, om, interpob, interp_mats, im_rank=self.im_rank)
-
-        scaling_coef = interpob['scaling_coef']
-        grid_size = interpob['grid_size']
-        im_size = interpob['im_size']
-        norm = interpob['norm']
-
+    def grad(dy):
+        x = adjkbinterp(dy, om, interpob, interp_mats)
         x = ifft_and_scale_on_gridded_data(
-            x, scaling_coef, grid_size, im_size, norm, im_rank=self.im_rank)
+            x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+        return x, None, None, None, None
 
-        def grad(dx):
-            x = scale_and_fft_on_image_volume(
-                dx, scaling_coef, grid_size, im_size, norm)
+    return y, grad
 
-            y = kbinterp(x, om, interpob, interp_mats)
+@tf.function
+@tf.custom_gradient
+def kbnufft_adjoint(y, om, interpob, interp_mats=None):
+    """Interpolate from scattered data to gridded data and then iFFT.
 
-            return y, None, None
-        return x, grad
+    Inputs are assumed to be batch/chans x coil x real/imag x kspace
+    length. Om should be nbatch x ndims x klength.
+
+    Args:
+        y (tensor): The off-grid signal.
+        om (tensor, optional): The off-grid coordinates in radians/voxel.
+        interp_mats (dict, default=None): A dictionary with keys
+            'real_interp_mats' and 'imag_interp_mats', each key containing
+            a list of interpolation matrices (see
+            mri.sparse_interp_mat.precomp_sparse_mats for construction).
+            If None, then a standard interpolation is run.
+
+    Returns:
+        tensor: The image after adjoint NUFFT.
+    """
+    x = adjkbinterp(y, om, interpob, interp_mats)
+
+    scaling_coef = interpob['scaling_coef']
+    grid_size = interpob['grid_size']
+    im_size = interpob['im_size']
+    norm = interpob['norm']
+    im_rank = interpob.get('im_rank', 2)
+
+    x = ifft_and_scale_on_gridded_data(
+        x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+
+    def grad(dx):
+        x = scale_and_fft_on_image_volume(
+            dx, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+
+        y = kbinterp(x, om, interpob, interp_mats)
+
+        return y, None, None, None
+    return x, grad
 
 
 # class ToepNufft(KbModule):

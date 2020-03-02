@@ -19,15 +19,15 @@ if __TFKBNUFFT_SETUP__:
     sys.stderr.write('Partial import of during the build process.\n')
 else:
     # from .kbinterp import KbInterpBack, KbInterpForw
-    from .kbnufft import KbNufft, AdjKbNufft
+    from .kbnufft import kbnufft_forward, kbnufft_adjoint
     # from .mrisensenufft import MriSenseNufft, AdjMriSenseNufft, ToepSenseNufft
     from .nufft import utils as nufft_utils
 
     __all__ = [
         # 'KbInterpForw',
         # 'KbInterpBack',
-        'KbNufft',
-        'AdjKbNufft',
+        'kbnufft_forward',
+        'kbnufft_adjoint',
         # 'MriSenseNufft',
         # 'AdjMriSenseNufft'
     ]

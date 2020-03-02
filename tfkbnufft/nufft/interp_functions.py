@@ -167,7 +167,7 @@ def run_interp_back(kdat, tm, params):
 
     # initialize output array
     griddat = tf.zeros(
-        shape=(kdat.shape[0], 2, tf.reduce_prod(dims)),
+        shape=(kdat.shape[0], tf.reduce_prod(dims)),
         dtype=dtype,
     )
 

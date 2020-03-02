@@ -85,7 +85,7 @@ def calc_coef_and_indices(tm, kofflist, Jval, table, centers, L, dims, conjcoef=
 
     return coef, arr_ind
 
-
+@tf.function
 def run_interp(griddat, tm, params):
     """Interpolates griddat to off-grid coordinates with input sparse matrices.
 
@@ -134,7 +134,7 @@ def run_interp(griddat, tm, params):
 
     return kdat
 
-
+@tf.function
 def run_interp_back(kdat, tm, params):
     """Interpolates kdat to on-grid coordinates.
 
@@ -242,7 +242,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
     y = []
     # run the table interpolator for each batch element
     # TODO: look into how to use tf.scan
-    for b in range(x.shape[0]):
+    for b in tf.range(tf.shape(x)[0]):
         if interp_mats is None:
             params['dims'] = tf.cast(tf.shape(x[b])[1:], 'int64')
             # tm are the localized frequency locations
@@ -324,7 +324,7 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
 
     x = []
     # run the table interpolator for each batch element
-    for b in range(y.shape[0]):
+    for b in tf.range(tf.shape(y)[0]):
         # phase for fftshift
         y_shifted = y[b] * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), y[b].dtype))[None, ...])
 

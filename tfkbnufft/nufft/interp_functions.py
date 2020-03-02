@@ -155,7 +155,6 @@ def run_interp_back(kdat, tm, params):
     L = params['table_oversamp']
 
     # extract data types
-    dtype = table[0].dtype
     int_type = tf.int64
 
     # center of tables
@@ -168,7 +167,7 @@ def run_interp_back(kdat, tm, params):
     # initialize output array
     griddat = tf.zeros(
         shape=(tf.shape(kdat)[0], tf.reduce_prod(dims)),
-        dtype=dtype,
+        dtype=kdat.dtype,
     )
 
     # loop over offsets and take advantage of numpy broadcasting

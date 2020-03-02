@@ -1,7 +1,5 @@
 import numpy as np
 import pytest
-import tensorflow as tf
-import torch
 from torchkbnufft.nufft import interp_functions as torch_interp_functions
 from torchkbnufft.nufft.utils import build_table
 
@@ -43,7 +41,7 @@ def test_calc_coef_and_indices(conjcoef):
     torch_args = [to_torch_arg(arg) for arg in args] + [conjcoef]
     res_torch_coefs, res_torch_ind = torch_interp_functions.calc_coef_and_indices(*torch_args)
     res_torch_coefs = torch_to_numpy(res_torch_coefs, complex_dim=0)
-    tf_args = [tf.convert_to_tensor(arg) for arg in args] + [conjcoef]
+    tf_args = [to_tf_arg(arg) for arg in args] + [conjcoef]
     res_tf_coefs, res_tf_ind = tf_interp_functions.calc_coef_and_indices(*tf_args)
     np.testing.assert_equal(res_torch_ind.numpy(), res_tf_ind.numpy())
     np.testing.assert_allclose(res_torch_coefs, res_tf_coefs.numpy())

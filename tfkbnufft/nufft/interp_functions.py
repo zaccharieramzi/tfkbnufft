@@ -184,7 +184,7 @@ def run_interp_back(kdat, tm, params):
     return griddat
 
 
-def kbinterp(x, om, interpob, interp_mats=None, im_rank=2):
+def kbinterp(x, om, interpob, interp_mats=None):
     """Apply table interpolation.
 
     Inputs are assumed to be batch/chans x coil x real/imag x image dims.
@@ -210,7 +210,7 @@ def kbinterp(x, om, interpob, interp_mats=None, im_rank=2):
     # extract interpolation params
     n_shift = interpob['n_shift']
     n_shift = tf.cast(n_shift, om.dtype)
-
+    im_rank = interpob.get('im_rank', 2)
     if interp_mats is None:
         grid_size = interpob['grid_size']
         grid_size = tf.cast(grid_size, om.dtype)
@@ -269,7 +269,7 @@ def kbinterp(x, om, interpob, interp_mats=None, im_rank=2):
     return y
 
 
-def adjkbinterp(y, om, interpob, interp_mats=None, im_rank=2):
+def adjkbinterp(y, om, interpob, interp_mats=None):
     """Apply table interpolation adjoint.
 
     Inputs are assumed to be batch/chans x coil x real/imag x kspace length.
@@ -293,6 +293,7 @@ def adjkbinterp(y, om, interpob, interp_mats=None, im_rank=2):
     """
 
     n_shift = interpob['n_shift']
+    im_rank = interpob.get('im_rank', 2)
 
     # TODO: refactor with kbinterp
     if interp_mats is None:

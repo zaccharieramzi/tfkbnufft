@@ -118,7 +118,7 @@ def run_interp(griddat, tm, params):
 
     # initialize output array
     kdat = tf.zeros(
-        shape=(griddat.shape[0], tm.shape[-1]),
+        shape=(tf.shape(griddat)[0], tf.shape(tm)[-1]),
         dtype=griddat.dtype,
     )
 
@@ -167,7 +167,7 @@ def run_interp_back(kdat, tm, params):
 
     # initialize output array
     griddat = tf.zeros(
-        shape=(kdat.shape[0], tf.reduce_prod(dims)),
+        shape=(tf.shape(kdat)[0], tf.reduce_prod(dims)),
         dtype=dtype,
     )
 
@@ -249,7 +249,7 @@ def kbinterp(x, om, interpob, interp_mats=None, im_rank=2):
             # view(x.shape[1], 2, -1) allows to have the values of each point
             # on the grid in a list, (x.shape[1] is the number of coils and 2
             # is the imag dim)
-            y.append(run_interp(tf.reshape(x[b], (x.shape[1], -1)), tm[b], params))
+            y.append(run_interp(tf.reshape(x[b], (tf.shape(x)[1], -1)), tm[b], params))
         else:
             # TODO: take care of this
             y.append(

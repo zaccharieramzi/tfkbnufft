@@ -32,7 +32,7 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
     ]
     # TODO: to allow broadcasting
     while len(scaling_coef.shape) < len(x.shape):
-        scaling_coef = scaling_coef[None, ...]
+        scaling_coef = tf.cast(scaling_coef[None, ...], x.dtype)
 
     # multiply by scaling coefs
     x = x * scaling_coef
@@ -45,7 +45,7 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm):
     else:
         x = tf.signal.fft3d(x)
     if norm == 'ortho':
-        scaling_factor = tf.cast(tf.reduce_prod(grid_size), 'complex64')
+        scaling_factor = tf.cast(tf.reduce_prod(grid_size), x.dtype)
         x = x / tf.sqrt(scaling_factor)
 
     return x
@@ -80,7 +80,7 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
         x = x[..., :int(im_size[2])]
 
     # scaling
-    scaling_factor = tf.cast(tf.reduce_prod(grid_size), 'complex64')
+    scaling_factor = tf.cast(tf.reduce_prod(grid_size), x.dtype)
     if norm == 'ortho':
         x = x * tf.sqrt(scaling_factor)
     else:
@@ -89,7 +89,7 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm):
     # scaling coefficient multiply
     # this might have to be revised, or the whole thing put in a tf py function
     while len(scaling_coef.shape) < len(x.shape):
-        scaling_coef = scaling_coef[None, ...]
+        scaling_coef = tf.cast(scaling_coef[None, ...], x.dtype)
 
     x = x * tf.math.conj(scaling_coef)
     # this might be nice to try at some point more like an option rather

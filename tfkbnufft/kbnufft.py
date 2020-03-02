@@ -164,6 +164,7 @@ class KbNufft(KbNufftModule):
     def __init__(self, *args, **kwargs):
         super(KbNufft, self).__init__(*args, **kwargs)
 
+    @tf.custom_gradient
     @tf.function
     def forward(self, x, om, interp_mats=None):
         """Apply FFT and interpolate from gridded data to scattered data.
@@ -199,7 +200,12 @@ class KbNufft(KbNufftModule):
 
         y = kbinterp(x, om, interpob, interp_mats, im_rank=self.im_rank)
 
-        return y
+        def grad(dy):
+            x = adjkbinterp(dy, om, interpob, interp_mats)
+
+            return x, None, None, None
+
+        return y, grad
 
 
 class AdjKbNufft(KbNufftModule):
@@ -229,6 +235,7 @@ class AdjKbNufft(KbNufftModule):
     def __init__(self, *args, **kwargs):
         super(AdjKbNufft, self).__init__(*args, **kwargs)
 
+    @tf.custom_gradient
     @tf.function
     def forward(self, y, om, interp_mats=None):
         """Interpolate from scattered data to gridded data and then iFFT.
@@ -261,7 +268,14 @@ class AdjKbNufft(KbNufftModule):
         x = ifft_and_scale_on_gridded_data(
             x, scaling_coef, grid_size, im_size, norm, im_rank=self.im_rank)
 
-        return x
+        def grad(dx):
+            x = scale_and_fft_on_image_volume(
+                dx, scaling_coef, grid_size, im_size, norm)
+
+            y = kbinterp(x, om, interpob, interp_mats)
+
+            return y, None, None
+        return x, grad
 
 
 # class ToepNufft(KbModule):

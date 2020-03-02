@@ -16,7 +16,9 @@ def to_torch_arg(arg):
             return torch.tensor(arg)
 
 def to_tf_arg(arg):
-    if isinstance(arg, dict):
+    if isinstance(arg, list):
+        return [to_tf_arg(a) for a in arg]
+    elif isinstance(arg, dict):
         return {k: to_tf_arg(v) for k, v in arg.items()}
     else:
         return tf.convert_to_tensor(arg)

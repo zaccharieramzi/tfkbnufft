@@ -104,9 +104,9 @@ def run_interp(griddat, tm, params):
     numpoints = params['numpoints']
     Jlist = params['Jlist']
     L = params['table_oversamp']
+    L = tf.cast(L, tm.dtype)
 
     # extract data types
-    dtype = table[0].dtype
     int_type = tf.int64
 
     # center of tables
@@ -119,14 +119,14 @@ def run_interp(griddat, tm, params):
     # initialize output array
     kdat = tf.zeros(
         shape=(griddat.shape[0], tm.shape[-1]),
-        dtype=dtype,
+        dtype=griddat.dtype,
     )
 
     # loop over offsets and take advantage of broadcasting
     for J in Jlist:
         coef, arr_ind = calc_coef_and_indices(
             tm, kofflist, J, table, centers, L, dims)
-
+        coef = tf.cast(coef, griddat.dtype)
         # I don't need to expand on coil dimension since I use tf gather and not
         # gather_nd
         # gather and multiply coefficients
@@ -209,10 +209,13 @@ def kbinterp(x, om, interpob, interp_mats=None):
 
     # extract interpolation params
     n_shift = interpob['n_shift']
+    n_shift = tf.cast(n_shift, om.dtype)
 
     if interp_mats is None:
         grid_size = interpob['grid_size']
+        grid_size = tf.cast(grid_size, om.dtype)
         numpoints = interpob['numpoints']
+        numpoints = tf.cast(numpoints, om.dtype)
         ndims = om.shape[1]
 
         # convert to normalized freq locs

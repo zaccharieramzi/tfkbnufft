@@ -1,40 +1,8 @@
 import math as m
 
-import numpy as np
 import tensorflow as tf
 
 from ..utils.itertools import product
-
-def run_mat_interp(griddat, coef_mat):
-    """Interpolates griddat to off-grid coordinates with input sparse matrices.
-
-    Args:
-        griddat (tensor): The gridded frequency data.
-        coef_mat (sparse tensor): The interpolation coefficients
-            stored as a sparse tensor.
-
-    Returns:
-        tensor: griddat interpolated to off-grid locations.
-    """
-    # TODO: look into sparse ordering for optimality of these mat mul
-    kdat = tf.sparse.sparse_dense_matmul(coef_mat, tf.transpose(griddat))
-    return kdat
-
-
-def run_mat_interp_back(kdat, coef_mat):
-    """Interpolates kdat to on-grid coordinates with input sparse matrices.
-
-    Args:
-        kdat (tensor): The off-grid frequency data.
-        coef_mat (sparse tensor): The interpolation coefficients
-            stored as a sparse tensor.
-
-    Returns:
-        tensor: kdat interpolated to on-grid locations.
-    """
-    griddat = tf.sparse.sparse_dense_matmul(tf.math.conj(coef_mat), tf.transpose(kdat))
-
-    return griddat
 
 
 def calc_coef_and_indices(tm, kofflist, Jval, table, centers, L, dims, conjcoef=False):
@@ -184,7 +152,7 @@ def run_interp_back(kdat, tm, params):
     return griddat
 
 @tf.function
-def kbinterp(x, om, interpob, interp_mats=None):
+def kbinterp(x, om, interpob):
     """Apply table interpolation.
 
     Inputs are assumed to be batch/chans x coil x real/imag x image dims.
@@ -197,48 +165,41 @@ def kbinterp(x, om, interpob, interp_mats=None):
         interpob (dict): An interpolation object with 'table', 'n_shift',
             'grid_size', 'numpoints', and 'table_oversamp' keys. See
             models.kbinterp.py for details.
-        interp_mats (dict, default=None): A dictionary with keys
-            'real_interp_mats' and 'imag_interp_mats', each key containing a
-            list of interpolation matrices (see
-            mri.sparse_interp_mat.precomp_sparse_mats for construction). If
-            None, then a standard interpolation is run.
 
     Returns:
         tensor: The signal interpolated to off-grid locations.
     """
-    # TODO: get rid of interp mats
     # extract interpolation params
     n_shift = interpob['n_shift']
     n_shift = tf.cast(n_shift, om.dtype)
     im_rank = interpob.get('im_rank', 2)
-    if interp_mats is None:
-        # TODO: refactor all of this with adjkbinterp
-        grid_size = interpob['grid_size']
-        grid_size = tf.cast(grid_size, om.dtype)
-        numpoints = interpob['numpoints']
-        numpoints = tf.cast(numpoints, om.dtype)
-        ndims = om.shape[1]
+    # TODO: refactor all of this with adjkbinterp
+    grid_size = interpob['grid_size']
+    grid_size = tf.cast(grid_size, om.dtype)
+    numpoints = interpob['numpoints']
+    numpoints = tf.cast(numpoints, om.dtype)
+    ndims = om.shape[1]
 
-        # convert to normalized freq locs
-        # the frequencies are originally in [-pi; pi]
-        # we put them in [-grid_size/2; grid_size/2]
-        pi = tf.constant(m.pi)
-        tm = om * grid_size[None, :, None] / tf.cast(2 * pi, om.dtype)
-        Jgen = []
-        for i in range(ndims):
-            # number of points to use for interpolation is numpoints
-            Jgen.append(tf.range(numpoints[i]))
-        # build an iterator for going over all J values
-        Jgen = product(Jgen, im_rank)
-        Jgen = tf.cast(Jgen, 'int64')
-        # set up params if not using sparse mats
-        params = {
-            'dims': None,
-            'table': interpob['table'],
-            'numpoints': numpoints,
-            'Jlist': Jgen,
-            'table_oversamp': interpob['table_oversamp'],
-        }
+    # convert to normalized freq locs
+    # the frequencies are originally in [-pi; pi]
+    # we put them in [-grid_size/2; grid_size/2]
+    pi = tf.constant(m.pi)
+    tm = om * grid_size[None, :, None] / tf.cast(2 * pi, om.dtype)
+    Jgen = []
+    for i in range(ndims):
+        # number of points to use for interpolation is numpoints
+        Jgen.append(tf.range(numpoints[i]))
+    # build an iterator for going over all J values
+    Jgen = product(Jgen, im_rank)
+    Jgen = tf.cast(Jgen, 'int64')
+    # set up params if not using sparse mats
+    params = {
+        'dims': None,
+        'table': interpob['table'],
+        'numpoints': numpoints,
+        'Jlist': Jgen,
+        'table_oversamp': interpob['table_oversamp'],
+    }
 
     y = tf.TensorArray(x.dtype, tf.shape(x)[0])
     y_not_shifted = tf.zeros(
@@ -248,23 +209,12 @@ def kbinterp(x, om, interpob, interp_mats=None):
     # run the table interpolator for each batch element
     # TODO: look into how to use tf.while_loop
     for b in tf.range(tf.shape(x)[0]):
-        if interp_mats is None:
-            params['dims'] = tf.cast(tf.shape(x[b])[1:], 'int64')
-            # tm are the localized frequency locations
-            # view(x.shape[1], 2, -1) allows to have the values of each point
-            # on the grid in a list, (x.shape[1] is the number of coils and 2
-            # is the imag dim)
-            y_not_shifted = run_interp(tf.reshape(x[b], (tf.shape(x)[1], -1)), tm[b], params)
-        else:
-            # TODO: take care of this
-            y.append(
-                run_mat_interp(
-                    x[b].view((x.shape[1], 2, -1)),
-                    # TODO: change to complex interp_mats
-                    interp_mats['real_interp_mats'][b],
-                    interp_mats['imag_interp_mats'][b],
-                )
-            )
+        params['dims'] = tf.cast(tf.shape(x[b])[1:], 'int64')
+        # tm are the localized frequency locations
+        # view(x.shape[1], 2, -1) allows to have the values of each point
+        # on the grid in a list, (x.shape[1] is the number of coils and 2
+        # is the imag dim)
+        y_not_shifted = run_interp(tf.reshape(x[b], (tf.shape(x)[1], -1)), tm[b], params)
 
         # phase for fftshift
         y = y.write(
@@ -277,7 +227,7 @@ def kbinterp(x, om, interpob, interp_mats=None):
     return y
 
 @tf.function
-def adjkbinterp(y, om, interpob, interp_mats=None):
+def adjkbinterp(y, om, interpob):
     """Apply table interpolation adjoint.
 
     Inputs are assumed to be batch/chans x coil x real/imag x kspace length.
@@ -290,48 +240,41 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
         interpob (dict): An interpolation object with 'table', 'n_shift',
             'grid_size', 'numpoints', and 'table_oversamp' keys. See
             models.kbinterp.py for details.
-        interp_mats (dict, default=None): A dictionary with keys
-            'real_interp_mats' and 'imag_interp_mats', each key containing a
-            list of interpolation matrices (see
-            mri.sparse_interp_mat.precomp_sparse_mats for construction). If
-            None, then a standard interpolation is run.
 
     Returns:
         tensor: The signal interpolated to on-grid locations.
     """
-    # TODO: get rid of interp mats
     n_shift = interpob['n_shift']
     n_shift = tf.cast(n_shift, om.dtype)
     im_rank = interpob.get('im_rank', 2)
 
     # TODO: refactor with kbinterp
-    if interp_mats is None:
-        grid_size = interpob['grid_size']
-        grid_size = tf.cast(grid_size, om.dtype)
-        numpoints = interpob['numpoints']
-        numpoints = tf.cast(numpoints, om.dtype)
-        ndims = om.shape[1]
+    grid_size = interpob['grid_size']
+    grid_size = tf.cast(grid_size, om.dtype)
+    numpoints = interpob['numpoints']
+    numpoints = tf.cast(numpoints, om.dtype)
+    ndims = om.shape[1]
 
-        # convert to normalized freq locs
-        # the frequencies are originally in [-pi; pi]
-        # we put them in [-grid_size/2; grid_size/2]
-        pi = tf.constant(m.pi)
-        tm = om * grid_size[None, :, None] / tf.cast(2 * pi, om.dtype)
-        Jgen = []
-        for i in range(ndims):
-            # number of points to use for interpolation is numpoints
-            Jgen.append(tf.range(numpoints[i]))
-        # build an iterator for going over all J values
-        Jgen = product(Jgen, im_rank)
-        Jgen = tf.cast(Jgen, 'int64')
-        # set up params if not using sparse mats
-        params = {
-            'dims': None,
-            'table': interpob['table'],
-            'numpoints': numpoints,
-            'Jlist': Jgen,
-            'table_oversamp': interpob['table_oversamp'],
-        }
+    # convert to normalized freq locs
+    # the frequencies are originally in [-pi; pi]
+    # we put them in [-grid_size/2; grid_size/2]
+    pi = tf.constant(m.pi)
+    tm = om * grid_size[None, :, None] / tf.cast(2 * pi, om.dtype)
+    Jgen = []
+    for i in range(ndims):
+        # number of points to use for interpolation is numpoints
+        Jgen.append(tf.range(numpoints[i]))
+    # build an iterator for going over all J values
+    Jgen = product(Jgen, im_rank)
+    Jgen = tf.cast(Jgen, 'int64')
+    # set up params if not using sparse mats
+    params = {
+        'dims': None,
+        'table': interpob['table'],
+        'numpoints': numpoints,
+        'Jlist': Jgen,
+        'table_oversamp': interpob['table_oversamp'],
+    }
 
     x = tf.TensorArray(y.dtype, tf.shape(y)[0])
     y_shifted = tf.zeros(
@@ -344,18 +287,9 @@ def adjkbinterp(y, om, interpob, interp_mats=None):
         # phase for fftshift
         y_shifted = y[b] * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), y[b].dtype))[None, ...])
 
-        if interp_mats is None:
-            params['dims'] = tf.cast(grid_size, 'int64')
+        params['dims'] = tf.cast(grid_size, 'int64')
 
-            x = x.write(b, run_interp_back(y_shifted, tm[b], params))
-        else:
-            x.append(
-                run_mat_interp_back(
-                    y[b],
-                    interp_mats['real_interp_mats'][b],
-                    interp_mats['imag_interp_mats'][b],
-                )
-            )
+        x = x.write(b, run_interp_back(y_shifted, tm[b], params))
 
     x = x.stack()
 

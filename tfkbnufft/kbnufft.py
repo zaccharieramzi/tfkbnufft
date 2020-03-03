@@ -149,11 +149,6 @@ def kbnufft_forward(interpob):
             x (tensor): The original imagel.
             om (tensor, optional): A new set of omega coordinates at which to
                 calculate the signal in radians/voxel.
-            interp_mats (dict, default=None): A dictionary with keys
-                'real_interp_mats' and 'imag_interp_mats', each key containing
-                a list of interpolation matrices (see
-                mri.sparse_interp_mat.precomp_sparse_mats for construction).
-                If None, then a standard interpolation is run.
 
         Returns:
             tensor: x computed at off-grid locations in om.
@@ -193,11 +188,6 @@ def kbnufft_adjoint(interpob):
         Args:
             y (tensor): The off-grid signal.
             om (tensor, optional): The off-grid coordinates in radians/voxel.
-            interp_mats (dict, default=None): A dictionary with keys
-                'real_interp_mats' and 'imag_interp_mats', each key containing
-                a list of interpolation matrices (see
-                mri.sparse_interp_mat.precomp_sparse_mats for construction).
-                If None, then a standard interpolation is run.
 
         Returns:
             tensor: The image after adjoint NUFFT.

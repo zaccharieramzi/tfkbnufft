@@ -3,6 +3,11 @@
 [GitHub](https://github.com/zaccharieramzi/tfkbnufft) | [![Build Status](https://travis-ci.com/zaccharieramzi/tfkbnufft.svg?branch=master)](https://travis-ci.com/zaccharieramzi/tfkbnufft)
 
 
+Simple installation from pypi:
+```
+pip install tfkbnufft
+```
+
 ## About
 
 This package is a verly early-stage and modest adaptation to TensorFlow of the [torchkbnufft](https://github.com/mmuckley/torchkbnufft) package written by Matthew Muckley for PyTorch.

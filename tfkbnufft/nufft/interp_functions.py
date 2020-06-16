@@ -208,8 +208,8 @@ def kbinterp(x, om, interpob):
     )
     # run the table interpolator for each batch element
     # TODO: look into how to use tf.while_loop
+    params['dims'] = tf.cast(tf.shape(x[0])[1:], 'int64')
     for b in tf.range(tf.shape(x)[0]):
-        params['dims'] = tf.cast(tf.shape(x[b])[1:], 'int64')
         # tm are the localized frequency locations
         # view(x.shape[1], 2, -1) allows to have the values of each point
         # on the grid in a list, (x.shape[1] is the number of coils and 2
@@ -283,11 +283,11 @@ def adjkbinterp(y, om, interpob):
     )
     # run the table interpolator for each batch element
     # TODO: look into how to use tf.while_loop
+    params['dims'] = tf.cast(grid_size, 'int64')
     for b in tf.range(tf.shape(y)[0]):
         # phase for fftshift
         y_shifted = y[b] * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), y[b].dtype))[None, ...])
 
-        params['dims'] = tf.cast(grid_size, 'int64')
 
         x = x.write(b, run_interp_back(y_shifted, tm[b], params))
 

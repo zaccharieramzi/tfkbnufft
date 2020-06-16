@@ -53,7 +53,7 @@ def calc_coef_and_indices(tm, kofflist, Jval, table, centers, L, dims, conjcoef=
 
     return coef, arr_ind
 
-@tf.function
+@tf.function(experimental_relax_shapes=True)
 def run_interp(griddat, tm, params):
     """Interpolates griddat to off-grid coordinates with input sparse matrices.
 
@@ -102,7 +102,7 @@ def run_interp(griddat, tm, params):
 
     return kdat
 
-@tf.function
+@tf.function(experimental_relax_shapes=True)
 def run_interp_back(kdat, tm, params):
     """Interpolates kdat to on-grid coordinates.
 
@@ -151,7 +151,7 @@ def run_interp_back(kdat, tm, params):
 
     return griddat
 
-@tf.function
+@tf.function(experimental_relax_shapes=True)
 def kbinterp(x, om, interpob):
     """Apply table interpolation.
 
@@ -200,33 +200,20 @@ def kbinterp(x, om, interpob):
         'Jlist': Jgen,
         'table_oversamp': interpob['table_oversamp'],
     }
-
-    y = tf.TensorArray(x.dtype, tf.shape(x)[0])
-    y_not_shifted = tf.zeros(
-        shape=(tf.shape(x)[1], tf.shape(tm)[-1]),
-        dtype=x.dtype,
-    )
     # run the table interpolator for each batch element
     # TODO: look into how to use tf.while_loop
     params['dims'] = tf.cast(tf.shape(x[0])[1:], 'int64')
-    for b in tf.range(tf.shape(x)[0]):
-        # tm are the localized frequency locations
-        # view(x.shape[1], 2, -1) allows to have the values of each point
-        # on the grid in a list, (x.shape[1] is the number of coils and 2
-        # is the imag dim)
-        y_not_shifted = run_interp(tf.reshape(x[b], (tf.shape(x)[1], -1)), tm[b], params)
+    def _map_body(inputs):
+        _x, _tm, _om = inputs
+        y_not_shifted = run_interp(tf.reshape(_x, (tf.shape(_x)[0], -1)), _tm, params)
+        y = y_not_shifted * tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(_om), n_shift), y_not_shifted.dtype))[None, ...]
+        return y
 
-        # phase for fftshift
-        y = y.write(
-            b,
-            y_not_shifted * tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), y_not_shifted.dtype))[None, ...],
-        )
-
-    y = y.stack()
+    y = tf.map_fn(_map_body, [x, tm, om], dtype=x.dtype)
 
     return y
 
-@tf.function
+@tf.function(experimental_relax_shapes=True)
 def adjkbinterp(y, om, interpob):
     """Apply table interpolation adjoint.
 
@@ -276,22 +263,17 @@ def adjkbinterp(y, om, interpob):
         'table_oversamp': interpob['table_oversamp'],
     }
 
-    x = tf.TensorArray(y.dtype, tf.shape(y)[0])
-    y_shifted = tf.zeros(
-        shape=(tf.shape(y)[1], tf.cast(tf.reduce_prod(grid_size), tf.int32)),
-        dtype=y.dtype,
-    )
     # run the table interpolator for each batch element
     # TODO: look into how to use tf.while_loop
     params['dims'] = tf.cast(grid_size, 'int64')
-    for b in tf.range(tf.shape(y)[0]):
-        # phase for fftshift
-        y_shifted = y[b] * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(om[b]), n_shift), y[b].dtype))[None, ...])
 
+    def _map_body(inputs):
+        _y, _om, _tm = inputs
+        y_shifted = _y * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(_om), n_shift), _y.dtype))[None, ...])
+        x = run_interp_back(y_shifted, _tm, params)
+        return x
 
-        x = x.write(b, run_interp_back(y_shifted, tm[b], params))
-
-    x = x.stack()
+    x = tf.map_fn(_map_body, [y, om, tm], dtype=y.dtype)
 
     bsize = tf.shape(y)[0]
     ncoil = tf.shape(y)[1]

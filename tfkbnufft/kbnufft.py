@@ -115,7 +115,7 @@ class KbNufftModule(KbModule):
         self.n_shift_tensor = tf.convert_to_tensor(np.array(self.n_shift, dtype=np.int64))
         self.grid_size_tensor = tf.convert_to_tensor(np.array(self.grid_size, dtype=np.int64))
         self.im_size_tensor = tf.convert_to_tensor(np.array(self.im_size, dtype=np.int64))
-        self.numpoints_tensor = tf.convert_to_tensor(np.array(self.numpoints, dtype=np.int64))
+        self.numpoints_tensor = tf.convert_to_tensor(np.array(self.numpoints, dtype=np.double))
         self.im_rank_tensor = tf.convert_to_tensor(np.array(self.im_rank, dtype=np.int64))
         self.table_oversamp_tensor = tf.convert_to_tensor(np.array(self.table_oversamp, dtype=np.double))
 

@@ -1,8 +1,7 @@
 import math as m
 
+import numpy as np
 import tensorflow as tf
-
-from ..utils.itertools import product
 
 
 def calc_coef_and_indices(tm, kofflist, Jval, table, centers, L, dims, conjcoef=False):
@@ -172,32 +171,23 @@ def kbinterp(x, om, interpob):
     # extract interpolation params
     n_shift = interpob['n_shift']
     n_shift = tf.cast(n_shift, om.dtype)
-    im_rank = interpob.get('im_rank', 2)
     # TODO: refactor all of this with adjkbinterp
     grid_size = interpob['grid_size']
     grid_size = tf.cast(grid_size, om.dtype)
     numpoints = interpob['numpoints']
-    numpoints = tf.cast(numpoints, om.dtype)
-    ndims = om.shape[1]
 
     # convert to normalized freq locs
     # the frequencies are originally in [-pi; pi]
     # we put them in [-grid_size/2; grid_size/2]
     pi = tf.constant(m.pi)
     tm = om * grid_size[None, :, None] / tf.cast(2 * pi, om.dtype)
-    Jgen = []
-    for i in range(ndims):
-        # number of points to use for interpolation is numpoints
-        Jgen.append(tf.range(numpoints[i]))
     # build an iterator for going over all J values
-    Jgen = product(Jgen, im_rank)
-    Jgen = tf.cast(Jgen, 'int64')
     # set up params if not using sparse mats
     params = {
         'dims': None,
         'table': interpob['table'],
         'numpoints': numpoints,
-        'Jlist': Jgen,
+        'Jlist': interpob['Jlist'],
         'table_oversamp': interpob['table_oversamp'],
     }
     # run the table interpolator for each batch element
@@ -233,33 +223,23 @@ def adjkbinterp(y, om, interpob):
     """
     n_shift = interpob['n_shift']
     n_shift = tf.cast(n_shift, om.dtype)
-    im_rank = interpob.get('im_rank', 2)
 
     # TODO: refactor with kbinterp
     grid_size = interpob['grid_size']
     grid_size = tf.cast(grid_size, om.dtype)
     numpoints = interpob['numpoints']
-    numpoints = tf.cast(numpoints, om.dtype)
-    ndims = om.shape[1]
 
     # convert to normalized freq locs
     # the frequencies are originally in [-pi; pi]
     # we put them in [-grid_size/2; grid_size/2]
     pi = tf.constant(m.pi)
     tm = om * grid_size[None, :, None] / tf.cast(2 * pi, om.dtype)
-    Jgen = []
-    for i in range(ndims):
-        # number of points to use for interpolation is numpoints
-        Jgen.append(tf.range(numpoints[i]))
-    # build an iterator for going over all J values
-    Jgen = product(Jgen, im_rank)
-    Jgen = tf.cast(Jgen, 'int64')
     # set up params if not using sparse mats
     params = {
         'dims': None,
         'table': interpob['table'],
         'numpoints': numpoints,
-        'Jlist': Jgen,
+        'Jlist': interpob['Jlist'],
         'table_oversamp': interpob['table_oversamp'],
     }
 

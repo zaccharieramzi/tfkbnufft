@@ -9,6 +9,8 @@ from .kbmodule import KbModule
 from .nufft.fft_functions import scale_and_fft_on_image_volume, ifft_and_scale_on_gridded_data
 from .nufft.interp_functions import kbinterp, adjkbinterp
 from .nufft.utils import build_spmatrix, build_table, compute_scaling_coefs
+from .utils.itertools import cartesian_product
+
 
 
 class KbNufftModule(KbModule):
@@ -110,9 +112,9 @@ class KbNufftModule(KbModule):
             self.table_tensors.append(tf.convert_to_tensor(item))
         # register buffer is not necessary in tf, you just have the variable in
         # your class, point.
-        self.n_shift_tensor = tf.convert_to_tensor(np.array(self.n_shift, dtype=np.double))
-        self.grid_size_tensor = tf.convert_to_tensor(np.array(self.grid_size, dtype=np.double))
-        self.im_size_tensor = tf.convert_to_tensor(np.array(self.im_size, dtype=np.double))
+        self.n_shift_tensor = tf.convert_to_tensor(np.array(self.n_shift, dtype=np.int64))
+        self.grid_size_tensor = tf.convert_to_tensor(np.array(self.grid_size, dtype=np.int64))
+        self.im_size_tensor = tf.convert_to_tensor(np.array(self.im_size, dtype=np.int64))
         self.numpoints_tensor = tf.convert_to_tensor(np.array(self.numpoints, dtype=np.double))
         self.table_oversamp_tensor = tf.convert_to_tensor(np.array(self.table_oversamp, dtype=np.double))
 
@@ -128,16 +130,23 @@ class KbNufftModule(KbModule):
         interpob['n_shift'] = self.n_shift_tensor
         interpob['grid_size'] = self.grid_size_tensor
         interpob['im_size'] = self.im_size_tensor
+        interpob['im_rank'] = self.im_rank
         interpob['numpoints'] = self.numpoints_tensor
         interpob['table_oversamp'] = self.table_oversamp_tensor
         interpob['norm'] = self.norm
         interpob['coil_broadcast'] = self.coil_broadcast
         interpob['matadj'] = self.matadj
+        Jgen = []
+        for i in range(self.im_rank):
+            # number of points to use for interpolation is numpoints
+            Jgen.append(np.arange(self.numpoints[i]))
+        Jgen = cartesian_product(Jgen)
+        interpob['Jlist'] = Jgen.astype('int64')
 
         return interpob
 
 def kbnufft_forward(interpob):
-    @tf.function
+    @tf.function(experimental_relax_shapes=True)
     @tf.custom_gradient
     def kbnufft_forward_for_interpob(x, om):
         """Apply FFT and interpolate from gridded data to scattered data.
@@ -177,7 +186,7 @@ def kbnufft_forward(interpob):
     return kbnufft_forward_for_interpob
 
 def kbnufft_adjoint(interpob):
-    @tf.function
+    @tf.function(experimental_relax_shapes=True)
     @tf.custom_gradient
     def kbnufft_adjoint_for_interpob(y, om):
         """Interpolate from scattered data to gridded data and then iFFT.

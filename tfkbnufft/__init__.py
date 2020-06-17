@@ -1,6 +1,6 @@
 """Package info"""
 
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 __author__ = 'Zaccharie Ramzi'
 __author_email__ = 'zaccharie.ramzi@inria.fr'
 __license__ = 'MIT'

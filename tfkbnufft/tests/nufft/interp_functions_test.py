@@ -4,6 +4,7 @@ from torchkbnufft.nufft import interp_functions as torch_interp_functions
 from torchkbnufft.nufft.utils import build_table
 
 from tfkbnufft.nufft import interp_functions as tf_interp_functions
+from tfkbnufft.utils.itertools import cartesian_product
 from ..utils import to_torch_arg, torch_to_numpy, to_tf_arg
 
 def setup():
@@ -27,7 +28,6 @@ def setup():
     )
     numpoints = numpoints.astype('float')
     L = L.astype('float')
-    grid_size = grid_size.astype('float')
     return tm, Jgen, table, numpoints, L, grid_size
 
 
@@ -111,10 +111,16 @@ def test_kbinterp(n_coil):
     ])[None, ...]  # adding batch dimension
     tm = tm[None, ...]  # adding batch dimension
     n_shift = np.array((grid_size//2) // 2).astype('float')
+    Jgen = []
+    for i in range(2):
+        # number of points to use for interpolation is numpoints
+        Jgen.append(np.arange(numpoints[i]))
+    Jgen = cartesian_product(Jgen)
     interpob = {
         'grid_size': grid_size.astype('float'),
         'table': table,
         'numpoints': numpoints,
+        'Jlist': Jgen.astype('int64'),
         'table_oversamp': L,
         'n_shift': n_shift,
     }
@@ -143,10 +149,16 @@ def test_adjkbinterp(n_coil):
     ])[None, ...]  # adding batch dimension
     tm = tm[None, ...]  # adding batch dimension
     n_shift = np.array((grid_size//2) // 2).astype('float')
+    Jgen = []
+    for i in range(2):
+        # number of points to use for interpolation is numpoints
+        Jgen.append(np.arange(numpoints[i]))
+    Jgen = cartesian_product(Jgen)
     interpob = {
         'grid_size': grid_size.astype('float'),
         'table': table,
         'numpoints': numpoints,
+        'Jlist': Jgen.astype('int64'),
         'table_oversamp': L,
         'n_shift': n_shift,
     }

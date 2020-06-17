@@ -72,6 +72,7 @@ def run_interp(griddat, tm, params):
     Jlist = params['Jlist']
     L = params['table_oversamp']
     L = tf.cast(L, tm.dtype)
+    numpoints = tf.cast(numpoints, tm.dtype)
 
     # extract data types
     int_type = tf.int64
@@ -121,6 +122,7 @@ def run_interp_back(kdat, tm, params):
     Jlist = params['Jlist']
     L = params['table_oversamp']
     L = tf.cast(L, tm.dtype)
+    numpoints = tf.cast(numpoints, tm.dtype)
 
     # extract data types
     int_type = tf.int64

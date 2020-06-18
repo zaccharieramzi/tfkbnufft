@@ -23,6 +23,8 @@ def profile_tfkbnufft(
     device_name = f'/{device}:0'
     with tf.device(device_name):
         image = tf.constant(image)
+        if device == 'GPU':
+            image = tf.cast(image, tf.complex64)
         ktraj = tf.constant(ktraj)
         nufft_ob = KbNufftModule(im_size=im_size, grid_size=None, norm='ortho')
         forward_op = kbnufft_forward(nufft_ob._extract_nufft_interpob())

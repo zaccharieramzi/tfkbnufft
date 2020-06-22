@@ -136,9 +136,11 @@ def run_interp_back(kdat, tm, params):
 
     # initialize output array
     griddat = tf.zeros(
-        shape=(tf.shape(kdat)[0], tf.cast(tf.reduce_prod(dims), tf.int32)),
+        shape=(tf.cast(tf.reduce_prod(dims), tf.int32), tf.shape(kdat)[0]),
         dtype=kdat.dtype,
     )
+    griddat_real = tf.real(griddat)
+    griddat_real = tf.imag(griddat)
 
     # loop over offsets and take advantage of numpy broadcasting
     for J in Jlist:
@@ -148,8 +150,12 @@ def run_interp_back(kdat, tm, params):
         updates = tf.transpose(coef[None, ...] * kdat)
         # TODO: change because the array of indexes was only in one dimension
         arr_ind = arr_ind[:, None]
-        griddat = tf.transpose(tf.tensor_scatter_nd_add(tf.transpose(griddat), arr_ind, updates))
+        # a hack related to https://github.com/tensorflow/tensorflow/issues/40672
+        # is to deal with real and imag parts separately
+        griddat_real = tf.tensor_scatter_nd_add(griddat_real, arr_ind, tf.math.real(updates))
+        griddat_imag = tf.tensor_scatter_nd_add(griddat_imag, arr_ind, tf.math.imag(updates))
 
+    griddat = tf.transpose(tf.complex(griddat_real, griddat_imag))
     return griddat
 
 @tf.function(experimental_relax_shapes=True)

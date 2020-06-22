@@ -47,8 +47,13 @@ def calc_coef_and_indices(tm, kofflist, Jval, table, centers, L, dims, conjcoef=
             coef = coef * tf.math.conj(sliced_table)
         else:
             coef = coef * sliced_table
-        arr_ind = arr_ind + tf.math.floormod(gridind[d, :], dims[d]) * \
-            tf.reduce_prod(dims[d + 1:])
+
+        floormod = tf.where(
+            tf.less(gridind[d, :], 0),
+            gridind[d, :] + dims[d],
+            gridind[d, :],
+        )
+        arr_ind = arr_ind + floormod * tf.reduce_prod(dims[d + 1:])
 
     return coef, arr_ind
 

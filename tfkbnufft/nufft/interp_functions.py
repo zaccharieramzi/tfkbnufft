@@ -139,8 +139,8 @@ def run_interp_back(kdat, tm, params):
         shape=(tf.cast(tf.reduce_prod(dims), tf.int32), tf.shape(kdat)[0]),
         dtype=kdat.dtype,
     )
-    griddat_real = tf.real(griddat)
-    griddat_real = tf.imag(griddat)
+    griddat_real = tf.math.real(griddat)
+    griddat_real = tf.math.imag(griddat)
 
     # loop over offsets and take advantage of numpy broadcasting
     for J in Jlist:

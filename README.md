@@ -13,6 +13,25 @@ pip install tfkbnufft
 This package is a verly early-stage and modest adaptation to TensorFlow of the [torchkbnufft](https://github.com/mmuckley/torchkbnufft) package written by Matthew Muckley for PyTorch.
 Please cite his work appropriately if you use this package.
 
+## Computation speed
+
+The computation speeds are given in seconds, for a 256x256 image with a spokelength of 512 and 405 spokes.
+These numbers are not to be directly compared to those of [torchkbnufft](https://github.com/mmuckley/torchkbnufft#computation-speed), since the computation is not the same.
+They are just to give a sense of the time required for computation.
+
+| Operation     | CPU    | GPU    |
+|---------------|--------|--------|
+| Forward NUFFT | 0.1676 | 0.0626 |
+| Adjoint NUFFT | 0.7005 | 0.0635 |
+
+To obtain these numbers for your machine, run the following commands, after installing this package:
+```
+pip install scikit-image Pillow
+python profile_tfkbnufft.py
+```
+
+These numbers were obtained with a Quadro P5000.
+
 ## References
 
 1. Fessler, J. A., & Sutton, B. P. (2003). Nonuniform fast Fourier transforms using min-max interpolation. *IEEE transactions on signal processing*, 51(2), 560-574.

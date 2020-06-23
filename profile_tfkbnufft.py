@@ -58,10 +58,8 @@ def run_all_profiles():
     print('running profiler...')
     spokelength = 512
     nspokes = 405
-    ncoil = 15
 
     print('problem size (radial trajectory, 2-factor oversampling):')
-    print('number of coils: {}'.format(ncoil))
     print('number of spokes: {}'.format(nspokes))
     print('spokelength: {}'.format(spokelength))
 

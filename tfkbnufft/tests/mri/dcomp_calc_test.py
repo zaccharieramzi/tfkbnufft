@@ -4,8 +4,8 @@ import torch
 
 from tfkbnufft import kbnufft_forward, kbnufft_adjoint
 from tfkbnufft.kbnufft import KbNufftModule
-from torchkbnufft import KbNufft, AdjKbNufft
 from tfkbnufft.mri.dcomp_calc import calculate_radial_dcomp_tf
+from torchkbnufft import KbNufft, AdjKbNufft
 from torchkbnufft.mri.dcomp_calc import calculate_radial_dcomp_pytorch
 
 

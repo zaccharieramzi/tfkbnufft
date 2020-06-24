@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 def calculate_radial_dcomp_pytorch(interpob, nufftob_forw, nufftob_back, ktraj):
@@ -60,12 +61,10 @@ def calculate_radial_dcomp_pytorch(interpob, nufftob_forw, nufftob_back, ktraj):
     threshold_level = 1 / query_point
 
     # compute the new dcomp for the batch in batch_ind
-    dcomp =
+    pi = tf.constant(np.pi)
+    dcomp = tf.maximum(
+        tf.sqrt(tf.reduce_sum(ktraj[-2:, ...] ** 2, axis=0)) / pi,
+        threshold_level,
+    )
 
-        torch.max(
-            torch.sqrt(
-                torch.sum(traj[-2:, ...] ** 2, dim=0)) * 1 / np.pi,
-            threshold_levels[batch_ind]
-        )
-
-    return dcomps
+    return dcomp

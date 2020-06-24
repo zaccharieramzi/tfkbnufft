@@ -52,9 +52,9 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
         nufftob_back(
             nufftob_forw(
                 test_sig,
-                om=ktraj[None, :]
+                ktraj[None, :]
             ),
-            om=ktraj[None, :]
+            ktraj[None, :]
         ),
         [image_loc],
     ) / norm_factor

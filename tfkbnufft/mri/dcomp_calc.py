@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-def calculate_radial_dcomp_pytorch(interpob, nufftob_forw, nufftob_back, ktraj):
+def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
     """Numerical density compensation estimation for a radial trajectory.
 
     Estimates the density compensation function numerically using a NUFFT

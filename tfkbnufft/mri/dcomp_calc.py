@@ -39,7 +39,7 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
     image_loc = tf.concat([
         (0, 0,),
         interpob['im_size'] // 2,
-    ], axis=0) + \
+    ], axis=0)
 
     # get the size of the test signal (add batch, coil, real/imag dim)
     test_size = tf.concat([(1, 1,), interpob['im_size']], axis=0)
@@ -48,20 +48,22 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
 
     # get one dcomp for each batch
     # extract the signal amplitude increase from center of image
-    nufftob_back
-    query_point = nufftob_back(
-        nufftob_forw(
-            test_sig,
+    query_point = tf.gather_nd(
+        nufftob_back(
+            nufftob_forw(
+                test_sig,
+                om=ktraj[None, :]
+            ),
             om=ktraj[None, :]
         ),
-        om=ktraj[None, :]
-    )[image_loc] / norm_factor
+        [image_loc],
+    ) / norm_factor
 
     # use query point to get ramp intercept
-    threshold_level = 1 / query_point
+    threshold_level = tf.cast(1 / query_point, ktraj.dtype)
 
     # compute the new dcomp for the batch in batch_ind
-    pi = tf.constant(np.pi)
+    pi = tf.constant(np.pi, dtype=ktraj.dtype)
     dcomp = tf.maximum(
         tf.sqrt(tf.reduce_sum(ktraj[-2:, ...] ** 2, axis=0)) / pi,
         threshold_level,

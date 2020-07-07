@@ -30,7 +30,7 @@ def calc_coef_and_indices(tm, kofflist, Jval, table, centers, L, dims, conjcoef=
     int_type = tf.int64
 
     # array shapes
-    M = tm.shape[1]
+    M = tf.shape(tm)[1]
     ndims = tm.shape[0]
 
     # indexing locations

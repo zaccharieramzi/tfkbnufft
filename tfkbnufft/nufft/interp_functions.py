@@ -31,7 +31,7 @@ def calc_coef_and_indices(tm, kofflist, Jval, table, centers, L, dims, conjcoef=
 
     # array shapes
     M = tf.shape(tm)[1]
-    ndims = tf.shape(tm)[0]
+    ndims = tm.shape[0]
 
     # indexing locations
     gridind = tf.cast(kofflist + Jval[:, None], dtype)

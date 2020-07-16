@@ -38,7 +38,7 @@ class KbNufftModule(KbModule):
 
     def __init__(self, im_size, grid_size=None, numpoints=6, n_shift=None,
                  table_oversamp=2**10, kbwidth=2.34, order=0, norm='None',
-                 coil_broadcast=False, matadj=False):
+                 coil_broadcast=False, matadj=False, table_dtype=np.complex64):
         super(KbNufftModule, self).__init__()
 
         self.im_size = im_size
@@ -82,7 +82,7 @@ class KbNufftModule(KbModule):
             order=self.order,
             alpha=self.alpha
         )
-        self.table = table
+        self.table = table.astype(table_dtype)
         assert len(self.table) == len(self.im_size)
 
         scaling_coef = compute_scaling_coefs(

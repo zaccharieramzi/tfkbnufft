@@ -82,7 +82,7 @@ class KbNufftModule(KbModule):
             order=self.order,
             alpha=self.alpha
         )
-        self.table = table.astype(table_dtype)
+        self.table = [t.astype(table_dtype) for t in table]
         assert len(self.table) == len(self.im_size)
 
         scaling_coef = compute_scaling_coefs(

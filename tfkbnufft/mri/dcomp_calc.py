@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
+
 def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
     """Numerical density compensation estimation for a radial trajectory.
 
@@ -35,13 +36,13 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
     else:
         norm_factor = 1
 
-    # append 0s for batch, first coil, real part
+    # append 0s for batch, first coil
     image_loc = tf.concat([
         (0, 0,),
         interpob['im_size'] // 2,
     ], axis=0)
 
-    # get the size of the test signal (add batch, coil, real/imag dim)
+    # get the size of the test signal (add batch, coil)
     test_size = tf.concat([(1, 1,), interpob['im_size']], axis=0)
 
     test_sig = tf.ones(test_size, dtype=tf.complex64)
@@ -65,7 +66,7 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
     # compute the new dcomp for the batch in batch_ind
     pi = tf.constant(np.pi, dtype=ktraj.dtype)
     dcomp = tf.maximum(
-        tf.sqrt(tf.reduce_sum(ktraj[-2:, ...] ** 2, axis=0)) / pi,
+        tf.sqrt(tf.reduce_sum(ktraj ** 2, axis=0)) / pi,
         threshold_level,
     )
 

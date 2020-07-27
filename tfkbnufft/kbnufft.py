@@ -151,7 +151,7 @@ def kbnufft_forward(interpob):
     def kbnufft_forward_for_interpob(x, om):
         """Apply FFT and interpolate from gridded data to scattered data.
 
-        Inputs are assumed to be batch/chans x coil x real/imag x image dims.
+        Inputs are assumed to be batch/chans x coil x image dims.
         Om should be nbatch x ndims x klength.
 
         Args:
@@ -191,7 +191,7 @@ def kbnufft_adjoint(interpob):
     def kbnufft_adjoint_for_interpob(y, om):
         """Interpolate from scattered data to gridded data and then iFFT.
 
-        Inputs are assumed to be batch/chans x coil x real/imag x kspace
+        Inputs are assumed to be batch/chans x coil x kspace
         length. Om should be nbatch x ndims x klength.
 
         Args:

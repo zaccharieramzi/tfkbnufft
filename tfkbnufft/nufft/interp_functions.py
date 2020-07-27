@@ -167,7 +167,7 @@ def run_interp_back(kdat, tm, params):
 def kbinterp(x, om, interpob):
     """Apply table interpolation.
 
-    Inputs are assumed to be batch/chans x coil x real/imag x image dims.
+    Inputs are assumed to be batch/chans x coil x image dims.
     Om should be nbatch x ndims x klength.
 
     Args:
@@ -220,7 +220,7 @@ def kbinterp(x, om, interpob):
 def adjkbinterp(y, om, interpob):
     """Apply table interpolation adjoint.
 
-    Inputs are assumed to be batch/chans x coil x real/imag x kspace length.
+    Inputs are assumed to be batch/chans x coil x x kspace length.
     Om should be nbatch x ndims x klength.
 
     Args:

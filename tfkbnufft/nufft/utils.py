@@ -154,7 +154,7 @@ def kaiser_bessel_ft(om, npts, alpha, order, d):
         om (ndarray): An array of coordinates to interpolate to.
         npts (int): Number of points to use for interpolation in each
             dimension.
-        order (int, default=0): Order of Kaiser-Bessel kernel.
+        order (int): Order of Kaiser-Bessel kernel.
         alpha (double or array of doubles): KB parameter.
         d (int):  ## TODO: find what d is
 

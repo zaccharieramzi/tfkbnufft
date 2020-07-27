@@ -16,8 +16,7 @@ from .utils.itertools import cartesian_product
 class KbNufftModule(KbModule):
     """Parent class for KbNufft classes.
 
-    This implementation collects all init functions into one place. It inherits
-    from torch.nn.Module via torchkbnufft.kbmodule.KbModule.
+    This implementation collects all init functions into one place.
 
     Args:
         im_size (int or tuple of ints): Size of base image.

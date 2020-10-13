@@ -26,6 +26,9 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj, stack
         ktraj (tensor): The k-space trajectory in radians/voxel dimension (d, m).
             d is the number of spatial dimensions, and m is the length of the
             trajectory.
+        stacks (bool): whether the trajectory is actually a stacks of radial
+            for 3D imaging rather than a pure radial trajectory. Not tested.
+            Defaults to False.
 
     Returns:
         tensor: The density compensation coefficients for ktraj of size (m).

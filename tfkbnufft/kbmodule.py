@@ -1,6 +1,6 @@
 # I don't necessarily want this to be a tf Layer. It has no weights that can be trained
 class KbModule:
-    """Parent class for torchkbnufft modules.
+    """Parent class for tfkbnufft modules.
 
     This class inherits from nn.Module. It is mostly used to have a central
     location for all __repr__ calls.

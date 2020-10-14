@@ -175,8 +175,7 @@ def kbinterp(x, om, interpob):
         om (tensor, optional): A custom set of k-space points to
             interpolate to in radians/voxel.
         interpob (dict): An interpolation object with 'table', 'n_shift',
-            'grid_size', 'numpoints', and 'table_oversamp' keys. See
-            models.kbinterp.py for details.
+            'grid_size', 'numpoints', and 'table_oversamp' keys.
 
     Returns:
         tensor: The signal interpolated to off-grid locations.
@@ -228,8 +227,7 @@ def adjkbinterp(y, om, interpob):
         om (tensor, optional): A set of k-space points to
             interpolate from in radians/voxel.
         interpob (dict): An interpolation object with 'table', 'n_shift',
-            'grid_size', 'numpoints', and 'table_oversamp' keys. See
-            models.kbinterp.py for details.
+            'grid_size', 'numpoints', and 'table_oversamp' keys.
 
     Returns:
         tensor: The signal interpolated to on-grid locations.

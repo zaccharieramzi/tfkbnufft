@@ -1,7 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
-def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
+
+def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj, stacks=False):
     """Numerical density compensation estimation for a radial trajectory.
 
     Estimates the density compensation function numerically using a NUFFT
@@ -25,6 +26,9 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
         ktraj (tensor): The k-space trajectory in radians/voxel dimension (d, m).
             d is the number of spatial dimensions, and m is the length of the
             trajectory.
+        stacks (bool): whether the trajectory is actually a stacks of radial
+            for 3D imaging rather than a pure radial trajectory. Not tested.
+            Defaults to False.
 
     Returns:
         tensor: The density compensation coefficients for ktraj of size (m).
@@ -36,13 +40,17 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
         norm_factor = 1
 
     # append 0s for batch, first coil
+    im_size = interpob['im_size']
+    if len(im_size) != 3  and stacks:
+        raise ValueError('`stacks` argument can only be used for 3d data')
     image_loc = tf.concat([
         (0, 0,),
-        interpob['im_size'] // 2,
+        im_size // 2,
     ], axis=0)
 
+
     # get the size of the test signal (add batch, coil)
-    test_size = tf.concat([(1, 1,), interpob['im_size']], axis=0)
+    test_size = tf.concat([(1, 1,), im_size], axis=0)
 
     test_sig = tf.ones(test_size, dtype=tf.complex64)
 
@@ -64,8 +72,12 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj):
 
     # compute the new dcomp for the batch in batch_ind
     pi = tf.constant(np.pi, dtype=ktraj.dtype)
+    if stacks:
+        ktraj_thresh = ktraj[0:2]
+    else:
+        ktraj_thresh = ktraj
     dcomp = tf.maximum(
-        tf.sqrt(tf.reduce_sum(ktraj[-2:, ...] ** 2, axis=0)) / pi,
+        tf.sqrt(tf.reduce_sum(ktraj_thresh ** 2, axis=0)) / pi,
         threshold_level,
     )
 

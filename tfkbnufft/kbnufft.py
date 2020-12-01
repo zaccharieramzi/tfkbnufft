@@ -179,7 +179,7 @@ def kbnufft_forward(interpob):
             x = adjkbinterp(dy, om, interpob)
             x = ifft_and_scale_on_gridded_data(
                 x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
-            return x, None
+            return x, 0
 
         return y, grad
     return kbnufft_forward_for_interpob
@@ -217,7 +217,7 @@ def kbnufft_adjoint(interpob):
 
             y = kbinterp(x, om, interpob)
 
-            return y, None
+            return y, 0
         return x, grad
     return kbnufft_adjoint_for_interpob
 

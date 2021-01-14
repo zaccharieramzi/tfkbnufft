@@ -56,4 +56,3 @@ def test_density_compensators_tf():
     interpob = nufft_ob._extract_nufft_interpob()
     tf_ktraj = tf.convert_to_tensor(ktraj)
     tf_dcomp = calculate_density_compensator(interpob, tf_ktraj)
-    return

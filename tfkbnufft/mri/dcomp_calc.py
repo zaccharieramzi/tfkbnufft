@@ -92,8 +92,8 @@ def calculate_density_compensator(interpob, ktraj, num_iterations=10):
     interpolator operator and a k-space trajectory (ktraj).
     This function implements Pipe et al
 
-    This function uses a nufft hyper parameter dictionary, the associated nufft
-    operators and k-space trajectory.
+    This function uses a nufft hyper parameter dictionary
+    and k-space trajectory.
 
     Args:
         interpob (dict): the output of `KbNufftModule._extract_nufft_interpob`

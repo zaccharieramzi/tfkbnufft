@@ -109,9 +109,9 @@ def calculate_density_compensator(interpob, ktraj, num_iterations=10):
     """
     test_sig = tf.ones([1, 1, ktraj.shape[1]], dtype=tf.complex64)
     for i in range(num_iterations):
-        test_sig = test_sig / kbinterp(
+        test_sig = test_sig / tf.cast(tf.math.abs(kbinterp(
             adjkbinterp(test_sig, ktraj[None, :], interpob),
             ktraj[None, :],
             interpob
-        )
+        )), 'complex64')
     return test_sig

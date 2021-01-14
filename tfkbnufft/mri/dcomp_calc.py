@@ -114,4 +114,5 @@ def calculate_density_compensator(interpob, ktraj, num_iterations=10):
             ktraj[None, :],
             interpob
         )), 'complex64')
+    test_sig = test_sig[0, 0]
     return test_sig

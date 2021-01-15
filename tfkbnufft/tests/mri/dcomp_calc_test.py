@@ -4,7 +4,8 @@ import torch
 
 from tfkbnufft import kbnufft_forward, kbnufft_adjoint
 from tfkbnufft.kbnufft import KbNufftModule
-from tfkbnufft.mri.dcomp_calc import calculate_radial_dcomp_tf
+from tfkbnufft.mri.dcomp_calc import calculate_radial_dcomp_tf, \
+    calculate_density_compensator
 from torchkbnufft import KbNufft, AdjKbNufft
 from torchkbnufft.mri.dcomp_calc import calculate_radial_dcomp_pytorch
 
@@ -47,3 +48,13 @@ def test_calculate_radial_dcomp_tf():
         rtol=1e-5,
         atol=1e-5,
     )
+
+def test_density_compensators_tf():
+    # This is a simple test to ensure that the code works only!
+    # We still dont have a method to test if the results are correct
+    ktraj, nufft_ob, torch_forward, torch_backward = setup()
+    interpob = nufft_ob._extract_nufft_interpob()
+    tf_ktraj = tf.convert_to_tensor(ktraj)
+	nufftob_back = kbnufft_adjoint(interpob)
+    nufftob_forw = kbnufft_forward(interpob)
+    tf_dcomp = calculate_density_compensator(interpob, nufftob_forw, nufftob_back, tf_ktraj)

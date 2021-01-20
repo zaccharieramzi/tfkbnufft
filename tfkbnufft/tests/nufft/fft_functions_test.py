@@ -8,7 +8,8 @@ from tfkbnufft.nufft import fft_functions as tf_fft_functions
 from torchkbnufft.nufft import fft_functions as torch_fft_functions
 
 @pytest.mark.parametrize('norm', ['ortho', None])
-def test_scale_and_fft_on_image_volume(norm):
+@pytest.mark.parametrize('multiprocessing', [True, False])
+def test_scale_and_fft_on_image_volume(norm, multiprocessing):
     # problem definition
     x = shepp_logan_phantom().astype(np.complex64)
     im_size = x.shape
@@ -28,6 +29,7 @@ def test_scale_and_fft_on_image_volume(norm):
         torch.tensor(grid_size).float(),
         torch.tensor(im_size),
         norm,
+
     ).numpy()
     res_torch = res_torch[:, :, 0] + 1j *res_torch[:, :, 1]
     # tf computations
@@ -37,11 +39,13 @@ def test_scale_and_fft_on_image_volume(norm):
         tf.convert_to_tensor(grid_size),
         tf.convert_to_tensor(im_size),
         norm,
+        multiprocessing,
     ).numpy()
     np.testing.assert_allclose(res_torch, res_tf, rtol=1e-4, atol=2*1e-2)
 
 @pytest.mark.parametrize('norm', ['ortho', None])
-def test_ifft_and_scale_on_gridded_data(norm):
+@pytest.mark.parametrize('multiprocessing', [True, False])
+def test_ifft_and_scale_on_gridded_data(norm, multiprocessing):
     # problem definition
     x = shepp_logan_phantom().astype(np.complex64)
     grid_size = x.shape
@@ -69,5 +73,6 @@ def test_ifft_and_scale_on_gridded_data(norm):
         tf.convert_to_tensor(grid_size),
         tf.convert_to_tensor(im_size),
         norm,
+        multiprocessing,
     ).numpy()
     np.testing.assert_allclose(res_torch, res_tf, rtol=1e-4, atol=2)

@@ -1,6 +1,0 @@
-language: python
-install:
-  - pip install .
-
-script:
-  - bash run_tests.sh

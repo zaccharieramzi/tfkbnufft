@@ -144,7 +144,7 @@ class KbNufftModule(KbModule):
 
         return interpob
 
-def kbnufft_forward(interpob):
+def kbnufft_forward(interpob, multiprocessing=False):
     @tf.function(experimental_relax_shapes=True)
     @tf.custom_gradient
     def kbnufft_forward_for_interpob(x, om):
@@ -171,7 +171,7 @@ def kbnufft_forward(interpob):
         im_rank = interpob.get('im_rank', 2)
 
         x = scale_and_fft_on_image_volume(
-            x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+            x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, multiprocessing=multiprocessing)
 
         y = kbinterp(x, om, interpob)
 
@@ -184,7 +184,7 @@ def kbnufft_forward(interpob):
         return y, grad
     return kbnufft_forward_for_interpob
 
-def kbnufft_adjoint(interpob):
+def kbnufft_adjoint(interpob, multiprocessing=False):
     @tf.function(experimental_relax_shapes=True)
     @tf.custom_gradient
     def kbnufft_adjoint_for_interpob(y, om):
@@ -209,7 +209,7 @@ def kbnufft_adjoint(interpob):
         im_rank = interpob.get('im_rank', 2)
 
         x = ifft_and_scale_on_gridded_data(
-            x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+            x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, multiprocessing=multiprocessing)
 
         def grad(dx):
             x = scale_and_fft_on_image_volume(

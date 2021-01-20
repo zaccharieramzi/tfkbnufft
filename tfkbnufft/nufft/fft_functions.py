@@ -1,6 +1,56 @@
-import tensorflow as tf
+import multiprocessing
 
-def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_rank=2):
+import tensorflow as tf
+from tensorflow.python.ops.signal.fft_ops import ifft2d, fft2d
+
+
+def tf_mp_ifft2d(kspace):
+    if len(kspace.shape) == 4:
+        # multicoil case
+        ncoils = tf.shape(kspace)[1]
+    n_slices = tf.shape(kspace)[0]
+    k_shape_x = tf.shape(kspace)[-2]
+    k_shape_y = tf.shape(kspace)[-1]
+    batched_kspace = tf.reshape(kspace, (-1, k_shape_x, k_shape_y))
+    batched_image = tf.map_fn(
+        ifft2d,
+        batched_kspace,
+        parallel_iterations=multiprocessing.cpu_count(),
+    )
+    if len(kspace.shape) == 4:
+        # multicoil case
+        image_shape = [n_slices, ncoils, k_shape_x, k_shape_y]
+    elif len(kspace.shape) == 3:
+        image_shape = [n_slices, k_shape_x, k_shape_y]
+    else:
+        image_shape = [k_shape_x, k_shape_y]
+    image = tf.reshape(batched_image, image_shape)
+    return image
+
+def tf_mp_fft2d(image):
+    if len(image.shape) == 4:
+        # multicoil case
+        ncoils = tf.shape(image)[1]
+    n_slices = tf.shape(image)[0]
+    shape_x = tf.shape(image)[-2]
+    shape_y = tf.shape(image)[-1]
+    batched_image = tf.reshape(image, (-1, shape_x, shape_y))
+    batched_kspace = tf.map_fn(
+        fft2d,
+        batched_image,
+        parallel_iterations=multiprocessing.cpu_count(),
+    )
+    if len(image.shape) == 4:
+        # multicoil case
+        k_shape = [n_slices, ncoils, shape_x, shape_y]
+    elif len(image.shape) == 3:
+        k_shape = [n_slices, shape_x, shape_y]
+    else:
+        k_shape = [shape_x, shape_y]
+    kspace = tf.reshape(batched_kspace, k_shape)
+    return kspace
+
+def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_rank=2, multiprocessing=False):
     """Applies the FFT and any relevant scaling factors to x.
 
     Args:
@@ -36,7 +86,10 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_
     x = tf.pad(x, pad_sizes)
     # this might have to be a tf py function, or I could use tf cond
     if im_rank == 2:
-        x = tf.signal.fft2d(x)
+        if multiprocessing:
+            x = tf_mp_fft2d(x)
+        else:
+            x = tf.signal.fft2d(x)
     else:
         x = tf.signal.fft3d(x)
     if norm == 'ortho':
@@ -45,7 +98,7 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_
 
     return x
 
-def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im_rank=2):
+def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im_rank=2, multiprocessing=False):
     """Applies the iFFT and any relevant scaling factors to x.
 
     Args:
@@ -64,7 +117,10 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im
     # innermost dimensions and we are handling complex tensors
     # do the inverse fft
     if im_rank == 2:
-        x = tf.signal.ifft2d(x)
+        if multiprocessing:
+            x = tf_mp_ifft2d(x)
+        else:
+            x = tf.signal.ifft2d(x)
     else:
         x = tf.signal.ifft3d(x)
 

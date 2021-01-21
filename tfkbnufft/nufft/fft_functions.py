@@ -1,14 +1,10 @@
 import multiprocessing
 
 import tensorflow as tf
-from tensorflow.python.ops.signal.fft_ops import ifft2d, fft2d
+from tensorflow.python.ops.signal.fft_ops import ifft2d, fft2d, fft1d, ifft1d
 
 
 def tf_mp_ifft2d(kspace):
-    if len(kspace.shape) == 4:
-        # multicoil case
-        ncoils = tf.shape(kspace)[1]
-    n_slices = tf.shape(kspace)[0]
     k_shape_x = tf.shape(kspace)[-2]
     k_shape_y = tf.shape(kspace)[-1]
     batched_kspace = tf.reshape(kspace, (-1, k_shape_x, k_shape_y))
@@ -17,21 +13,10 @@ def tf_mp_ifft2d(kspace):
         batched_kspace,
         parallel_iterations=multiprocessing.cpu_count(),
     )
-    if len(kspace.shape) == 4:
-        # multicoil case
-        image_shape = [n_slices, ncoils, k_shape_x, k_shape_y]
-    elif len(kspace.shape) == 3:
-        image_shape = [n_slices, k_shape_x, k_shape_y]
-    else:
-        image_shape = [k_shape_x, k_shape_y]
-    image = tf.reshape(batched_image, image_shape)
+    image = tf.reshape(batched_image, tf.shape(kspace))
     return image
 
 def tf_mp_fft2d(image):
-    if len(image.shape) == 4:
-        # multicoil case
-        ncoils = tf.shape(image)[1]
-    n_slices = tf.shape(image)[0]
     shape_x = tf.shape(image)[-2]
     shape_y = tf.shape(image)[-1]
     batched_image = tf.reshape(image, (-1, shape_x, shape_y))
@@ -40,14 +25,34 @@ def tf_mp_fft2d(image):
         batched_image,
         parallel_iterations=multiprocessing.cpu_count(),
     )
-    if len(image.shape) == 4:
-        # multicoil case
-        k_shape = [n_slices, ncoils, shape_x, shape_y]
-    elif len(image.shape) == 3:
-        k_shape = [n_slices, shape_x, shape_y]
-    else:
-        k_shape = [shape_x, shape_y]
-    kspace = tf.reshape(batched_kspace, k_shape)
+    kspace = tf.reshape(batched_kspace, tf.shape(image))
+    return kspace
+
+def tf_mp_ifft3d(kspace):
+    k_shape_z = tf.shape(kspace)[-3]
+    k_shape_x = tf.shape(kspace)[-2]
+    k_shape_y = tf.shape(kspace)[-1]
+    batched_kspace = tf.reshape(kspace, (-1, k_shape_z, k_shape_x, k_shape_y))
+    batched_image = tf.map_fn(
+        ifft2d,
+        batched_kspace,
+        parallel_iterations=multiprocessing.cpu_count(),
+    )
+    image = tf.reshape(batched_image, tf.shape(kspace))
+    return image
+
+def tf_mp_fft3d(image):
+    shape_z = tf.shape(image)[-3]
+    shape_x = tf.shape(image)[-2]
+    shape_y = tf.shape(image)[-1]
+    reshaped_image = tf.reshape(image, (-1, shape_y))
+    batched_kspace = tf.map_fn(
+        fft1d,
+        reshaped_image,
+        parallel_iterations=multiprocessing.cpu_count(),
+    )
+    
+    kspace = tf.reshape(batched_kspace, tf.shape(image))
     return kspace
 
 def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_rank=2, multiprocessing=False):

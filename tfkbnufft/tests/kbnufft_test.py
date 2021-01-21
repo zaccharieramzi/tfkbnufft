@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import tensorflow as tf
 
 from tfkbnufft import kbnufft_forward, kbnufft_adjoint
@@ -27,7 +28,8 @@ def ktraj_function():
     traj = tf.convert_to_tensor(traj)[None, ...]
     return traj
 
-def test_adjoint_gradient():
+@pytest.mark.parametrize('multiprocessing', [True, False])
+def test_adjoint_gradient(multiprocessing):
     traj = ktraj_function()
     kspace = tf.zeros([1, 1, kspace_shape], dtype=tf.complex64)
     nufft_ob = KbNufftModule(
@@ -35,7 +37,7 @@ def test_adjoint_gradient():
         grid_size=None,
         norm='ortho',
     )
-    backward_op = kbnufft_adjoint(nufft_ob._extract_nufft_interpob())
+    backward_op = kbnufft_adjoint(nufft_ob._extract_nufft_interpob(), multiprocessing)
     with tf.GradientTape() as tape:
         tape.watch(kspace)
         res = backward_op(kspace, traj)
@@ -43,7 +45,8 @@ def test_adjoint_gradient():
     tf_test = tf.test.TestCase()
     tf_test.assertEqual(grad.shape, kspace.shape)
 
-def test_forward_gradient():
+@pytest.mark.parametrize('multiprocessing', [True, False])
+def test_forward_gradient(multiprocessing):
     traj = ktraj_function()
     image = tf.zeros([1, 1, *image_shape], dtype=tf.complex64)
     nufft_ob = KbNufftModule(
@@ -51,7 +54,7 @@ def test_forward_gradient():
         grid_size=None,
         norm='ortho',
     )
-    forward_op = kbnufft_forward(nufft_ob._extract_nufft_interpob())
+    forward_op = kbnufft_forward(nufft_ob._extract_nufft_interpob(), multiprocessing)
     with tf.GradientTape() as tape:
         tape.watch(image)
         res = forward_op(image, traj)

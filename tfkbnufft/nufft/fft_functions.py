@@ -1,6 +1,67 @@
-import tensorflow as tf
+import multiprocessing
 
-def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_rank=2):
+import tensorflow as tf
+from tensorflow.python.ops.signal.fft_ops import ifft2d, fft2d, fft, ifft
+
+
+def tf_mp_ifft2d(kspace):
+    k_shape_x = tf.shape(kspace)[-2]
+    k_shape_y = tf.shape(kspace)[-1]
+    batched_kspace = tf.reshape(kspace, (-1, k_shape_x, k_shape_y))
+    batched_image = tf.map_fn(
+        ifft2d,
+        batched_kspace,
+        parallel_iterations=multiprocessing.cpu_count(),
+    )
+    image = tf.reshape(batched_image, tf.shape(kspace))
+    return image
+
+def tf_mp_fft2d(image):
+    shape_x = tf.shape(image)[-2]
+    shape_y = tf.shape(image)[-1]
+    batched_image = tf.reshape(image, (-1, shape_x, shape_y))
+    batched_kspace = tf.map_fn(
+        fft2d,
+        batched_image,
+        parallel_iterations=multiprocessing.cpu_count(),
+    )
+    kspace = tf.reshape(batched_kspace, tf.shape(image))
+    return kspace
+
+def tf_mp_ifft3d(kspace):
+    image = tf_mp_fourier3d(kspace, trans_type='inv')
+    return image
+
+def tf_mp_fft3d(image):
+    kspace = tf_mp_fourier3d(image, trans_type='forw')
+    return kspace
+
+def tf_mp_fourier3d(x, trans_type='inv'):
+    fn_2d, fn_1d = (ifft2d, ifft) if trans_type == 'inv' else (fft2d, fft)
+    n_slices = tf.shape(x)[0]
+    n_coils = tf.shape(x)[1]
+    shape_z = tf.shape(x)[-3]
+    shape_x = tf.shape(x)[-2]
+    shape_y = tf.shape(x)[-1]
+    reshaped_x = tf.reshape(x, (-1, shape_x, shape_y))
+    batched_incomplete_y = tf.map_fn(
+        fn_2d,
+        reshaped_x,
+        parallel_iterations=multiprocessing.cpu_count(),
+    )
+    incomplete_y = tf.reshape(batched_incomplete_y, tf.shape(x))
+    incomplete_y_reshaped = tf.transpose(incomplete_y, [0, 1, 3, 4, 2])
+    batched_incomplete_y_reshaped = tf.reshape(incomplete_y_reshaped, (-1, shape_z))
+    batched_y = tf.map_fn(
+        fn_1d,
+        batched_incomplete_y_reshaped,
+        parallel_iterations=multiprocessing.cpu_count(),
+    )
+    y_reshaped = tf.reshape(batched_y, [n_slices, n_coils, shape_x, shape_y, shape_z])
+    y = tf.transpose(y_reshaped, [0, 1, 4, 2, 3])
+    return y
+
+def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_rank=2, multiprocessing=False):
     """Applies the FFT and any relevant scaling factors to x.
 
     Args:
@@ -36,16 +97,22 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_
     x = tf.pad(x, pad_sizes)
     # this might have to be a tf py function, or I could use tf cond
     if im_rank == 2:
-        x = tf.signal.fft2d(x)
+        if multiprocessing:
+            x = tf_mp_fft2d(x)
+        else:
+            x = tf.signal.fft2d(x)
     else:
-        x = tf.signal.fft3d(x)
+        if multiprocessing:
+            x = tf_mp_fft3d(x)
+        else:
+            x = tf.signal.fft3d(x)
     if norm == 'ortho':
         scaling_factor = tf.cast(tf.reduce_prod(grid_size), x.dtype)
         x = x / tf.sqrt(scaling_factor)
 
     return x
 
-def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im_rank=2):
+def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im_rank=2, multiprocessing=False):
     """Applies the iFFT and any relevant scaling factors to x.
 
     Args:
@@ -64,9 +131,15 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im
     # innermost dimensions and we are handling complex tensors
     # do the inverse fft
     if im_rank == 2:
-        x = tf.signal.ifft2d(x)
+        if multiprocessing:
+            x = tf_mp_ifft2d(x)
+        else:
+            x = tf.signal.ifft2d(x)
     else:
-        x = tf.signal.ifft3d(x)
+        if multiprocessing:
+            x = tf_mp_ifft3d(x)
+        else:
+            x = tf.signal.ifft3d(x)
 
     im_size = tf.cast(im_size, tf.int32)
     # crop to output size

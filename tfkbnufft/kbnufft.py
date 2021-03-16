@@ -182,13 +182,7 @@ def kbnufft_forward(interpob, multiprocessing=False):
                 grid_dy, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
 
             # Gradients with respect to trajectory locations
-            r = (
-                tf.linspace(-im_size[0]/2, im_size[0]/2-1, im_size[0]),
-            )
-            if im_rank >=2:
-                r = r + (tf.linspace(-im_size[1]/2, im_size[1]/2-1, im_size[1]),)
-                if im_rank == 3:
-                    r = r + (tf.linspace(-im_size[2]/2, im_size[2]/2-1, im_size[2]),)
+            r = [tf.linspace(-im_size[i]/2, im_size[i]/2-1, im_size[i]) for i in range(im_rank)]
             grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), x.dtype)[None, ...]
             fft_dx_dom = scale_and_fft_on_image_volume(
                 x * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, multiprocessing=multiprocessing)
@@ -230,13 +224,7 @@ def kbnufft_adjoint(interpob, multiprocessing=False):
             dx_dy = kbinterp(fft_dx, om, interpob)
 
             # Gradients with respect to trajectory locations
-            r = (
-                tf.linspace(-im_size[0]/2, im_size[0]/2-1, im_size[0]),
-            )
-            if im_rank >=2:
-                r = r + (tf.linspace(-im_size[1]/2, im_size[1]/2-1, im_size[1]),)
-                if im_rank == 3:
-                    r = r + (tf.linspace(-im_size[2]/2, im_size[2]/2-1, im_size[2]),)
+            r = [tf.linspace(-im_size[i]/2, im_size[i]/2-1, im_size[i]) for i in range(im_rank)]
             grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), y.dtype)[None, ...]
             ifft_dxr = scale_and_fft_on_image_volume(
                 dx * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, do_ifft=True)

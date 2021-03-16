@@ -57,7 +57,14 @@ def test_forward_gradient(multiprocessing):
     forward_op = kbnufft_forward(nufft_ob._extract_nufft_interpob(), multiprocessing)
     with tf.GradientTape() as tape:
         tape.watch(image)
-        res = forward_op(image, traj)
+        r = tf.cast(tf.reshape(tf.meshgrid(
+            np.linspace(-640/2, 640/2, 640, endpoint=False),
+            np.linspace(-400/2, 400/2, 400, endpoint=False),
+            indexing='ij'
+        ), (2, -640*400)), tf.float32)
+        A = tf.exp(-2j * np.pi * tf.cast(tf.matmul(tf.transpose(traj[0])/2/np.pi, r), tf.complex64))/np.sqrt(640*400)/2
+        print(A)
+    res = forward_op(image, traj)
     grad = tape.gradient(res, image)
     tf_test = tf.test.TestCase()
     tf_test.assertEqual(grad.shape, image.shape)

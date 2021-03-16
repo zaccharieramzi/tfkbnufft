@@ -225,7 +225,7 @@ def kbnufft_adjoint(interpob, multiprocessing=False):
 
             # Gradients with respect to trajectory locations
             r = [tf.linspace(-im_size[i]/2, im_size[i]/2-1, im_size[i]) for i in range(im_rank)]
-            grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), y.dtype)[None, ...]
+            grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), dx.dtype)[None, ...]
             ifft_dxr = scale_and_fft_on_image_volume(
                 dx * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, do_ifft=True)
             dx_dom = tf.cast(1j * y * kbinterp(ifft_dxr, om, interpob, conj=True), om.dtype)

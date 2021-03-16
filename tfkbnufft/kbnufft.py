@@ -191,7 +191,7 @@ def kbnufft_forward(interpob, multiprocessing=False):
                     r = r + (tf.linspace(-im_size[2]/2, im_size[2]/2-1, im_size[2]),)
             grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), x.dtype)[None, ...]
             fft_dx_dom = scale_and_fft_on_image_volume(
-                x * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, multiprocessing=multiprocessing)
+                x * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
             dy_dom = tf.cast(-1j * dy * kbinterp(fft_dx_dom, om, interpob), tf.float32)
             return ifft_dy, dy_dom
 

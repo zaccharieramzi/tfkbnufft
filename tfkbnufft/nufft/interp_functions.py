@@ -98,7 +98,7 @@ def run_interp(griddat, tm, params):
     # loop over offsets and take advantage of broadcasting
     for J in Jlist:
         coef, arr_ind = calc_coef_and_indices(
-            tm, kofflist, J, table, centers, L, dims)
+            tm, kofflist, J, table, centers, L, dims, conjcoef=params['conjcoef'])
         coef = tf.cast(coef, griddat.dtype)
         # I don't need to expand on coil dimension since I use tf gather and not
         # gather_nd
@@ -164,7 +164,7 @@ def run_interp_back(kdat, tm, params):
     return griddat
 
 @tf.function(experimental_relax_shapes=True)
-def kbinterp(x, om, interpob):
+def kbinterp(x, om, interpob, conj=False):
     """Apply table interpolation.
 
     Inputs are assumed to be batch/chans x coil x image dims.
@@ -176,6 +176,9 @@ def kbinterp(x, om, interpob):
             interpolate to in radians/voxel.
         interpob (dict): An interpolation object with 'table', 'n_shift',
             'grid_size', 'numpoints', and 'table_oversamp' keys.
+        conj (bool, optional, default False): Boolean value to check if
+            conjugate value of interpolator coefficient must be used.
+            This is need for gradients calculation
 
     Returns:
         tensor: The signal interpolated to off-grid locations.
@@ -205,10 +208,14 @@ def kbinterp(x, om, interpob):
     # run the table interpolator for each batch element
     # TODO: look into how to use tf.while_loop
     params['dims'] = tf.cast(tf.shape(x[0])[1:], 'int64')
+    params['conjcoef'] = conj
     def _map_body(inputs):
         _x, _tm, _om = inputs
         y_not_shifted = run_interp(tf.reshape(_x, (tf.shape(_x)[0], -1)), _tm, params)
-        y = y_not_shifted * tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(_om), n_shift), y_not_shifted.dtype))[None, ...]
+        if conj:
+            y = y_not_shifted * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(_om), n_shift), y_not_shifted.dtype)))[None, ...]
+        else:
+            y = y_not_shifted * tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(_om), n_shift), y_not_shifted.dtype))[None, ...]
         return y
 
     y = tf.map_fn(_map_body, [x, tm, om], dtype=x.dtype)

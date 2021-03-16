@@ -61,7 +61,8 @@ def tf_mp_fourier3d(x, trans_type='inv'):
     y = tf.transpose(y_reshaped, [0, 1, 4, 2, 3])
     return y
 
-def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_rank=2, multiprocessing=False):
+def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_rank=2, multiprocessing=False,
+                                  do_ifft=False):
     """Applies the FFT and any relevant scaling factors to x.
 
     Args:
@@ -72,6 +73,8 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_
         im_size (tensor): The image dimensions for x.
         norm (str): Type of normalization factor to use. If 'ortho', uses
             orthogonal FFT, otherwise, no normalization is applied.
+        do_ifft (bool, optional, default False): When true, the IFFT is
+            carried out on signal rather than FFT. This is needed for gradient.
 
     Returns:
         tensor: The oversampled FFT of x.
@@ -84,31 +87,50 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_
         (0, 0),  # coil dimension
     ] + [
         (0, grid_size[0] - im_size[0]),  # nx
-        (0, grid_size[1] - im_size[1]),  # ny
     ]
+    if im_rank >= 2:
+        pad_sizes += [(0, grid_size[1] - im_size[1])]
     if im_rank == 3:
         pad_sizes += [(0, grid_size[2] - im_size[2])]  # nz
     scaling_coef = tf.cast(scaling_coef, x.dtype)
     scaling_coef = scaling_coef[None, None, ...]
     # multiply by scaling coefs
-    x = x * scaling_coef
+    if do_ifft:
+        x = x * tf.math.conj(scaling_coef)
+    else:
+        x = x * scaling_coef
 
     # zero pad and fft
     x = tf.pad(x, pad_sizes)
     # this might have to be a tf py function, or I could use tf cond
     if im_rank == 2:
         if multiprocessing:
-            x = tf_mp_fft2d(x)
+            if do_ifft:
+                x = tf_mp_ifft2d(x)
+            else:
+                x = tf_mp_fft2d(x)
         else:
-            x = tf.signal.fft2d(x)
+            if do_ifft:
+                x = tf.signal.ifft2d(x)
+            else:
+                x = tf.signal.fft2d(x)
     else:
         if multiprocessing:
-            x = tf_mp_fft3d(x)
+            if do_ifft:
+                x = tf_mp_ifft3d(x)
+            else:
+                x = tf_mp_fft3d(x)
         else:
-            x = tf.signal.fft3d(x)
+            if do_ifft:
+                x = tf.signal.ifft3d(x)
+            else:
+                x = tf.signal.fft3d(x)
     if norm == 'ortho':
         scaling_factor = tf.cast(tf.reduce_prod(grid_size), x.dtype)
-        x = x / tf.sqrt(scaling_factor)
+        if do_ifft:
+            x = x * tf.sqrt(scaling_factor)
+        else:
+            x = x / tf.sqrt(scaling_factor)
 
     return x
 
@@ -143,7 +165,9 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im
 
     im_size = tf.cast(im_size, tf.int32)
     # crop to output size
-    x = x[:, :, :im_size[0], :im_size[1]]
+    x = x[:, :, :im_size[0]]
+    if im_rank >=2:
+        x = x[..., :im_size[1]]
     if im_rank == 3:
         x = x[..., :im_size[2]]
 

@@ -170,16 +170,30 @@ def kbnufft_forward(interpob, multiprocessing=False):
         norm = interpob['norm']
         im_rank = interpob.get('im_rank', 2)
 
-        x = scale_and_fft_on_image_volume(
+        fft_x = scale_and_fft_on_image_volume(
             x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, multiprocessing=multiprocessing)
 
-        y = kbinterp(x, om, interpob)
+        y = kbinterp(fft_x, om, interpob)
 
         def grad(dy):
-            x = adjkbinterp(dy, om, interpob)
-            x = ifft_and_scale_on_gridded_data(
-                x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
-            return x, None
+            # Gradients with respect to image
+            grid_dy = adjkbinterp(dy, om, interpob)
+            ifft_dy = ifft_and_scale_on_gridded_data(
+                grid_dy, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+
+            # Gradients with respect to trajectory locations
+            r = (
+                tf.linspace(-im_size[0]/2, im_size[0]/2-1, im_size[0]),
+            )
+            if im_rank >=2:
+                r = r + (tf.linspace(-im_size[1]/2, im_size[1]/2-1, im_size[1]),)
+                if im_rank == 3:
+                    r = r + (tf.linspace(-im_size[2]/2, im_size[2]/2-1, im_size[2]),)
+            grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), x.dtype)[None, ...]
+            fft_dx_dom = scale_and_fft_on_image_volume(
+                x * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, multiprocessing=multiprocessing)
+            dy_dom = tf.cast(-1j * kbinterp(fft_dx_dom, om, interpob), tf.float32)
+            return ifft_dy, dy_dom
 
         return y, grad
     return kbnufft_forward_for_interpob
@@ -200,25 +214,36 @@ def kbnufft_adjoint(interpob, multiprocessing=False):
         Returns:
             tensor: The image after adjoint NUFFT.
         """
-        x = adjkbinterp(y, om, interpob)
-
+        grid_y = adjkbinterp(y, om, interpob)
         scaling_coef = interpob['scaling_coef']
         grid_size = interpob['grid_size']
         im_size = interpob['im_size']
         norm = interpob['norm']
         im_rank = interpob.get('im_rank', 2)
-
-        x = ifft_and_scale_on_gridded_data(
-            x, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, multiprocessing=multiprocessing)
+        ifft_y = ifft_and_scale_on_gridded_data(
+            grid_y, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, multiprocessing=multiprocessing)
 
         def grad(dx):
-            x = scale_and_fft_on_image_volume(
+            # Gradients with respect to off grid signal
+            fft_dx = scale_and_fft_on_image_volume(
                 dx, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
+            dx_dy = kbinterp(fft_dx, om, interpob)
 
-            y = kbinterp(x, om, interpob)
+            # Gradients with respect to trajectory locations
+            r = (
+                tf.linspace(-im_size[0]/2, im_size[0]/2-1, im_size[0]),
+            )
+            if im_rank >=2:
+                r = r + (tf.linspace(-im_size[1]/2, im_size[1]/2-1, im_size[1]),)
+                if im_rank == 3:
+                    r = r + (tf.linspace(-im_size[2]/2, im_size[2]/2-1, im_size[2]),)
+            grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), y.dtype)[None, ...]
+            ifft_dxr = scale_and_fft_on_image_volume(
+                dx * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, do_ifft=True)
+            dx_dom = tf.cast(1j * y * kbinterp(ifft_dxr, om, interpob, conj=True), om.dtype)
 
-            return y, None
-        return x, grad
+            return dx_dy, dx_dom
+        return ifft_y, grad
     return kbnufft_adjoint_for_interpob
 
 

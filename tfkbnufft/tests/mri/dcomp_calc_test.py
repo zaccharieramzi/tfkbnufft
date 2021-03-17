@@ -1,13 +1,9 @@
 import numpy as np
 import tensorflow as tf
-import torch
 
 from tfkbnufft import kbnufft_forward, kbnufft_adjoint
 from tfkbnufft.kbnufft import KbNufftModule
-from tfkbnufft.mri.dcomp_calc import calculate_radial_dcomp_tf, \
-    calculate_density_compensator
-from torchkbnufft import KbNufft, AdjKbNufft
-from torchkbnufft.mri.dcomp_calc import calculate_radial_dcomp_pytorch
+from tfkbnufft.mri.dcomp_calc import calculate_density_compensator
 
 
 def setup():
@@ -29,30 +25,13 @@ def setup():
     ktraj = np.stack((ky.flatten(), kx.flatten()), axis=0)
     im_size = (200, 200)
     nufft_ob = KbNufftModule(im_size=im_size, grid_size=grid_size, norm='ortho')
-    torch_forward = KbNufft(im_size=im_size, grid_size=grid_size, norm='ortho')
-    torch_backward = AdjKbNufft(im_size=im_size, grid_size=grid_size, norm='ortho')
-    return ktraj, nufft_ob, torch_forward, torch_backward
+    return ktraj, nufft_ob
 
-def test_calculate_radial_dcomp_tf():
-    ktraj, nufft_ob, torch_forward, torch_backward = setup()
-    interpob = nufft_ob._extract_nufft_interpob()
-    tf_nufftob_forw = kbnufft_forward(interpob)
-    tf_nufftob_back = kbnufft_adjoint(interpob)
-    tf_ktraj = tf.convert_to_tensor(ktraj)
-    torch_ktraj = torch.tensor(ktraj).unsqueeze(0)
-    tf_dcomp = calculate_radial_dcomp_tf(interpob, tf_nufftob_forw, tf_nufftob_back, tf_ktraj)
-    torch_dcomp = calculate_radial_dcomp_pytorch(torch_forward, torch_backward, torch_ktraj)
-    np.testing.assert_allclose(
-        tf_dcomp.numpy(),
-        torch_dcomp[0].numpy(),
-        rtol=1e-5,
-        atol=1e-5,
-    )
 
 def test_density_compensators_tf():
     # This is a simple test to ensure that the code works only!
     # We still dont have a method to test if the results are correct
-    ktraj, nufft_ob, torch_forward, torch_backward = setup()
+    ktraj, nufft_ob = setup()
     interpob = nufft_ob._extract_nufft_interpob()
     tf_ktraj = tf.convert_to_tensor(ktraj)
     nufftob_back = kbnufft_adjoint(interpob)

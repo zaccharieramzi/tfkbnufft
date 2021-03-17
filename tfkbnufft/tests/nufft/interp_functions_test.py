@@ -63,7 +63,7 @@ def test_run_interp(n_coil, conjcoef):
         'numpoints': numpoints,
         'Jlist': Jgen,
         'table_oversamp': L,
-        'conjcoef': False,
+        'conjcoef': conjcoef,
     }
     args = [griddat, tm, params]
     torch_args = [to_torch_arg(arg) for arg in args]

@@ -47,7 +47,8 @@ def test_calc_coef_and_indices(conjcoef):
     np.testing.assert_allclose(res_torch_coefs, res_tf_coefs.numpy())
 
 @pytest.mark.parametrize('n_coil', [1, 2, 5, 16])
-def test_run_interp(n_coil):
+@pytest.mark.parametrize('conjcoef', [True, False])
+def test_run_interp(n_coil, conjcoef):
     tm, Jgen, table, numpoints, L, grid_size = setup()
     grid_size = grid_size.astype('int')
     griddat = np.stack([
@@ -62,17 +63,21 @@ def test_run_interp(n_coil):
         'numpoints': numpoints,
         'Jlist': Jgen,
         'table_oversamp': L,
+        'conjcoef': conjcoef,
     }
     args = [griddat, tm, params]
-    torch_args = [to_torch_arg(arg) for arg in args]
-    # I need this because griddat is first n_coil then real/imag
-    torch_args[0] = torch_args[0].permute(1, 0, 2)
-    res_torch = torch_interp_functions.run_interp(*torch_args)
+    if not conjcoef:
+        torch_args = [to_torch_arg(arg) for arg in args]
+        # I need this because griddat is first n_coil then real/imag
+        torch_args[0] = torch_args[0].permute(1, 0, 2)
+        res_torch = torch_interp_functions.run_interp(*torch_args)
     # I need this because I create Jlist in a neater way for tensorflow
     params['Jlist'] = Jgen.T
     tf_args = [to_tf_arg(arg) for arg in args]
     res_tf = tf_interp_functions.run_interp(*tf_args)
-    np.testing.assert_allclose(torch_to_numpy(res_torch, complex_dim=1), res_tf.numpy())
+    if not conjcoef:
+        # Compare results with torch
+        np.testing.assert_allclose(torch_to_numpy(res_torch, complex_dim=1), res_tf.numpy())
 
 @pytest.mark.parametrize('n_coil', [1, 2, 5, 16])
 def test_run_interp_back(n_coil):

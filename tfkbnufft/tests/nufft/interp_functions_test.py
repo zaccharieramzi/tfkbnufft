@@ -47,7 +47,8 @@ def test_calc_coef_and_indices(conjcoef):
     np.testing.assert_allclose(res_torch_coefs, res_tf_coefs.numpy())
 
 @pytest.mark.parametrize('n_coil', [1, 2, 5, 16])
-def test_run_interp(n_coil):
+@pytest.mark.parametrize('conjcoef', [True, False])
+def test_run_interp(n_coil, conjcoef):
     tm, Jgen, table, numpoints, L, grid_size = setup()
     grid_size = grid_size.astype('int')
     griddat = np.stack([
@@ -62,6 +63,7 @@ def test_run_interp(n_coil):
         'numpoints': numpoints,
         'Jlist': Jgen,
         'table_oversamp': L,
+        'conjcoef': False,
     }
     args = [griddat, tm, params]
     torch_args = [to_torch_arg(arg) for arg in args]

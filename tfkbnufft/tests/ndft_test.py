@@ -5,7 +5,9 @@ from tfkbnufft import kbnufft_forward, kbnufft_adjoint
 from tfkbnufft.kbnufft import KbNufftModule
 
 
-def get_fourier_matrix(ktraj, grid_r, im_size, im_rank, do_ifft=False):
+def get_fourier_matrix(ktraj, im_size, im_rank, do_ifft=False):
+    r = [tf.linspace(-im_size[i]/2, im_size[i]/2-1, im_size[i]) for i in range(im_rank)]
+    grid_r =tf.cast(tf.reshape(tf.meshgrid(*r ,indexing='ij'), (im_rank, tf.reduce_prod(im_size))), tf.float32)
     traj_grid = tf.cast(tf.matmul(tf.transpose(ktraj[0]), grid_r), tf.complex64)
     if do_ifft:
         A = tf.exp(1j * traj_grid)
@@ -30,9 +32,7 @@ def test_adjoint_and_gradients(im_size):
 
     with tf.GradientTape(persistent=True) as g:
         I_nufft = kbnufft_adjoint(nufft_ob._extract_nufft_interpob())(kdata, ktraj)[0][0]
-        r = [tf.linspace(-im_size[i]/2, im_size[i]/2-1, im_size[i]) for i in range(im_rank)]
-        grid_r =tf.cast(tf.reshape(tf.meshgrid(*r ,indexing='ij'), (im_rank, tf.reduce_prod(im_size))), tf.float32)
-        A = get_fourier_matrix(ktraj, grid_r, im_size, im_rank, do_ifft=True)
+        A = get_fourier_matrix(ktraj, im_size, im_rank, do_ifft=True)
         I_ndft = tf.reshape(tf.matmul(tf.transpose(A), kdata[0][0][..., None]), im_size)
 
     tf_test = tf.test.TestCase()
@@ -66,9 +66,7 @@ def test_forward_and_gradients(im_size):
 
     with tf.GradientTape(persistent=True) as g:
         kdata_nufft = kbnufft_forward(nufft_ob._extract_nufft_interpob())(signal, ktraj)[0]
-        r = [tf.linspace(-im_size[i]/2, im_size[i]/2-1, im_size[i]) for i in range(im_rank)]
-        grid_r =tf.cast(tf.reshape(tf.meshgrid(*r ,indexing='ij'), (im_rank, tf.reduce_prod(im_size))), tf.float32)
-        A = get_fourier_matrix(ktraj, grid_r, im_size, im_rank, do_ifft=False)
+        A = get_fourier_matrix(ktraj, im_size, im_rank, do_ifft=False)
         kdata_ndft = tf.transpose(tf.matmul(A, tf.reshape(signal[0][0], (tf.reduce_prod(im_size), 1))))
 
     tf_test = tf.test.TestCase()

@@ -3,6 +3,27 @@ import multiprocessing
 import tensorflow as tf
 from tensorflow.python.ops.signal.fft_ops import ifft2d, fft2d, fft, ifft
 
+def tf_mp_ifft(kspace):
+    k_shape_x = tf.shape(kspace)[-1]
+    batched_kspace = tf.reshape(kspace, (-1, k_shape_x))
+    batched_image = tf.map_fn(
+        ifft,
+        batched_kspace,
+        parallel_iterations=multiprocessing.cpu_count(),
+    )
+    image = tf.reshape(batched_image, tf.shape(kspace))
+    return image
+
+def tf_mp_fft(kspace):
+    k_shape_x = tf.shape(kspace)[-1]
+    batched_kspace = tf.reshape(kspace, (-1, k_shape_x))
+    batched_image = tf.map_fn(
+        fft,
+        batched_kspace,
+        parallel_iterations=multiprocessing.cpu_count(),
+    )
+    image = tf.reshape(batched_image, tf.shape(kspace))
+    return image
 
 def tf_mp_ifft2d(kspace):
     k_shape_x = tf.shape(kspace)[-2]
@@ -61,6 +82,37 @@ def tf_mp_fourier3d(x, trans_type='inv'):
     y = tf.transpose(y_reshaped, [0, 1, 4, 2, 3])
     return y
 
+# Generate a fourier dictionary to simplify its use below.
+# In the end we have the following list:
+# fourier_dict[do_ifft][multiprocessing][rank of image - 1]
+fourier_dict = [
+    [
+        [
+            tf.signal.fft,
+            tf.signal.fft2d,
+            tf.signal.fft3d,
+        ],
+        [
+            tf_mp_fft,
+            tf_mp_fft2d,
+            tf_mp_fft3d,
+        ]
+    ],
+    [
+        [
+            tf.signal.ifft,
+            tf.signal.ifft2d,
+            tf.signal.ifft3d,
+        ],
+        [
+            tf_mp_ifft,
+            tf_mp_ifft2d,
+            tf_mp_ifft3d,
+        ]
+    ]
+]
+
+
 def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_rank=2, multiprocessing=False,
                                   do_ifft=False):
     """Applies the FFT and any relevant scaling factors to x.
@@ -103,28 +155,7 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_
     # zero pad and fft
     x = tf.pad(x, pad_sizes)
     # this might have to be a tf py function, or I could use tf cond
-    if im_rank == 2:
-        if multiprocessing:
-            if do_ifft:
-                x = tf_mp_ifft2d(x)
-            else:
-                x = tf_mp_fft2d(x)
-        else:
-            if do_ifft:
-                x = tf.signal.ifft2d(x)
-            else:
-                x = tf.signal.fft2d(x)
-    else:
-        if multiprocessing:
-            if do_ifft:
-                x = tf_mp_ifft3d(x)
-            else:
-                x = tf_mp_fft3d(x)
-        else:
-            if do_ifft:
-                x = tf.signal.ifft3d(x)
-            else:
-                x = tf.signal.fft3d(x)
+    x = fourier_dict[do_ifft][multiprocessing][im_rank - 1]
     if norm == 'ortho':
         scaling_factor = tf.cast(tf.reduce_prod(grid_size), x.dtype)
         if do_ifft:
@@ -133,6 +164,7 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_
             x = x / tf.sqrt(scaling_factor)
 
     return x
+
 
 def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im_rank=2, multiprocessing=False):
     """Applies the iFFT and any relevant scaling factors to x.
@@ -152,17 +184,7 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im
     # we don't need permutations since the fft in fourier is done on the
     # innermost dimensions and we are handling complex tensors
     # do the inverse fft
-    if im_rank == 2:
-        if multiprocessing:
-            x = tf_mp_ifft2d(x)
-        else:
-            x = tf.signal.ifft2d(x)
-    else:
-        if multiprocessing:
-            x = tf_mp_ifft3d(x)
-        else:
-            x = tf.signal.ifft3d(x)
-
+    x = fourier_dict[True][multiprocessing][im_rank - 1]
     im_size = tf.cast(im_size, tf.int32)
     # crop to output size
     x = x[:, :, :im_size[0]]

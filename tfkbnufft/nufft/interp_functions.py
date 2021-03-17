@@ -212,10 +212,11 @@ def kbinterp(x, om, interpob, conj=False):
     def _map_body(inputs):
         _x, _tm, _om = inputs
         y_not_shifted = run_interp(tf.reshape(_x, (tf.shape(_x)[0], -1)), _tm, params)
+        shift = tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(_om), n_shift), y_not_shifted.dtype))[None, ...]
         if conj:
-            y = y_not_shifted * tf.math.conj(tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(_om), n_shift), y_not_shifted.dtype)))[None, ...]
+            y = y_not_shifted * tf.math.conj(shift)
         else:
-            y = y_not_shifted * tf.exp(1j * tf.cast(tf.linalg.matvec(tf.transpose(_om), n_shift), y_not_shifted.dtype))[None, ...]
+            y = y_not_shifted * shift
         return y
 
     y = tf.map_fn(_map_body, [x, tm, om], dtype=x.dtype)

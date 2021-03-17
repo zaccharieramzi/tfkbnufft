@@ -5,8 +5,9 @@ from tfkbnufft import kbnufft_forward, kbnufft_adjoint
 from tfkbnufft.kbnufft import KbNufftModule
 
 
-@pytest.mark.parametrize('im_size', [(20, ), (10, 15), (10, 15, 12)])
+@pytest.mark.parametrize('im_size', [(20, ), (10, 10), (10, 10, 10)])
 def test_adjoint_and_gradients(im_size):
+    tf.random.set_seed(0)
     grid_size = tuple(np.array(im_size)*2)
     im_rank = len(im_size)
     M = im_size[0] * 3**im_rank
@@ -28,23 +29,24 @@ def test_adjoint_and_gradients(im_size):
 
     tf_test = tf.test.TestCase()
     # Test if the NUFFT and NDFT operation is same
-    tf_test.assertAllClose(I_nufft, I_ndft, atol=1e-1)
+    tf_test.assertAllClose(I_nufft, I_ndft, atol=1e-2)
 
     # Test gradients with respect to kdata
     gradient_ndft_kdata = g.gradient(I_ndft, kdata)[0]
     gradient_nufft_kdata = g.gradient(I_nufft, kdata)[0]
-    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=1e-1)
+    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=1e-2)
 
     # Test gradients with respect to trajectory location
     gradient_ndft_traj = g.gradient(I_ndft, ktraj)[0]
     gradient_nufft_traj = g.gradient(I_nufft, ktraj)[0]
-    tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=1e-1)
+    tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=1e-2)
     # This is gradient of NDFT from matrix, will help in debug
     # gradient_from_matrix = 2*np.pi*1j*tf.matmul(tf.cast(r, tf.complex64), tf.transpose(A))*kdata[0][0]
 
 
-@pytest.mark.parametrize('im_size', [(20, ), (10, 15), (10, 15, 12)])
+@pytest.mark.parametrize('im_size', [(20, ), (10, 10)])
 def test_forward_and_gradients(im_size):
+    tf.random.set_seed(0)
     grid_size = tuple(np.array(im_size)*2)
     im_rank = len(im_size)
     M = im_size[0] * 3**im_rank
@@ -65,16 +67,16 @@ def test_forward_and_gradients(im_size):
 
     tf_test = tf.test.TestCase()
     # Test if the NUFFT and NDFT operation is same
-    tf_test.assertAllClose(kdata_nufft, kdata_ndft, atol=1e-1)
+    tf_test.assertAllClose(kdata_nufft, kdata_ndft, atol=1e-2)
 
     # Test gradients with respect to kdata
     gradient_ndft_kdata = g.gradient(kdata_ndft, signal)[0]
     gradient_nufft_kdata = g.gradient(kdata_nufft, signal)[0]
-    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=1)
+    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=1e-2)
 
     # Test gradients with respect to trajectory location
     gradient_ndft_traj = g.gradient(kdata_ndft, ktraj)[0]
     gradient_nufft_traj = g.gradient(kdata_nufft, ktraj)[0]
-    tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=1)
+    tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=1e-2)
     # This is gradient of NDFT from matrix, will help in debug
     # gradient_ndft_matrix = -2j * np.pi * tf.transpose(tf.matmul(A, tf.transpose(tf.cast(r, tf.complex64) * tf.reshape(signal[0][0], (N*N,)))))

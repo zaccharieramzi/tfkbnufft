@@ -85,7 +85,7 @@ def tf_mp_fourier3d(x, trans_type='inv'):
 # Generate a fourier dictionary to simplify its use below.
 # In the end we have the following list:
 # fourier_dict[do_ifft][multiprocessing][rank of image - 1]
-fourier_dict = [
+fourier_list = [
     [
         [
             tf.signal.fft,
@@ -155,7 +155,7 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_
     # zero pad and fft
     x = tf.pad(x, pad_sizes)
     # this might have to be a tf py function, or I could use tf cond
-    x = fourier_dict[do_ifft][multiprocessing][im_rank - 1](x)
+    x = fourier_list[do_ifft][multiprocessing][im_rank - 1](x)
     if norm == 'ortho':
         scaling_factor = tf.cast(tf.reduce_prod(grid_size), x.dtype)
         if do_ifft:
@@ -184,7 +184,7 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im
     # we don't need permutations since the fft in fourier is done on the
     # innermost dimensions and we are handling complex tensors
     # do the inverse fft
-    x = fourier_dict[True][multiprocessing][im_rank - 1](x)
+    x = fourier_list[True][multiprocessing][im_rank - 1](x)
     im_size = tf.cast(im_size, tf.int32)
     # crop to output size
     x = x[:, :, :im_size[0]]

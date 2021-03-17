@@ -154,7 +154,6 @@ def scale_and_fft_on_image_volume(x, scaling_coef, grid_size, im_size, norm, im_
 
     # zero pad and fft
     x = tf.pad(x, pad_sizes)
-    # this might have to be a tf py function, or I could use tf cond
     x = fourier_list[do_ifft][multiprocessing][im_rank - 1](x)
     if norm == 'ortho':
         scaling_factor = tf.cast(tf.reduce_prod(grid_size), x.dtype)

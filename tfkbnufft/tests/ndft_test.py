@@ -15,7 +15,7 @@ def get_fourier_matrix(ktraj, grid_r, im_size, im_rank, do_ifft=False):
     return A
 
 
-@pytest.mark.parametrize('im_size', [(10, ), (10, 10)])
+@pytest.mark.parametrize('im_size', [(10, 10)])
 def test_adjoint_and_gradients(im_size):
     tf.random.set_seed(0)
     grid_size = tuple(np.array(im_size)*2)
@@ -52,7 +52,7 @@ def test_adjoint_and_gradients(im_size):
     # gradient_from_matrix = 2*np.pi*1j*tf.matmul(tf.cast(r, tf.complex64), tf.transpose(A))*kdata[0][0]
 
 
-@pytest.mark.parametrize('im_size', [(10, ), (10, 10)])
+@pytest.mark.parametrize('im_size', [(10, 10)])
 def test_forward_and_gradients(im_size):
     tf.random.set_seed(0)
     grid_size = tuple(np.array(im_size)*2)

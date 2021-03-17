@@ -189,9 +189,10 @@ def ifft_and_scale_on_gridded_data(x, scaling_coef, grid_size, im_size, norm, im
     # crop to output size
     x = x[:, :, :im_size[0]]
     if im_rank >=2:
-        x = x[..., :im_size[1]]
-    if im_rank == 3:
-        x = x[..., :im_size[2]]
+        if im_rank == 3:
+            x = x[..., :im_size[1], :im_size[2]]
+        else:
+            x = x[..., :im_size[1]]
 
     # scaling
     scaling_factor = tf.cast(tf.reduce_prod(grid_size), x.dtype)

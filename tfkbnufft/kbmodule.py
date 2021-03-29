@@ -17,7 +17,7 @@ class KbModule:
                     out = out + '   table: {} arrays, lengths: {}\n'.format(
                         len(self.table), self.table_oversamp)
                     tablecheck = True
-            elif 'traj' in attr or 'scaling_coef' in attr:
+            elif ('traj' in attr and attr != 'grad_traj') or 'scaling_coef' in attr:
                 out = out + '   {}: {} {} array\n'.format(
                     attr, value.shape, value.dtype)
             elif not any([item in attr for item in filter_list]):

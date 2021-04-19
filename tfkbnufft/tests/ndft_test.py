@@ -54,10 +54,6 @@ def test_adjoint_and_gradients(im_size):
     gradient_nufft_traj = g.gradient(I_nufft, ktraj)[0]
     tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=1e-3)
 
-    dy_ndft = g.gradient(loss_ndft, I_ndft)
-    dy_nufft = g.gradient(loss_nufft, I_nufft)
-    tf_test.assertAllClose(dy_ndft, dy_nufft, atol=1e-4)
-
     # Test gradients with respect to kdata
     gradient_ndft_loss = g.gradient(loss_ndft, ktraj)[0]
     gradient_nufft_loss = g.gradient(loss_nufft, ktraj)[0]
@@ -102,10 +98,6 @@ def test_forward_and_gradients(im_size):
     gradient_ndft_traj = g.gradient(kdata_ndft, ktraj)[0]
     gradient_nufft_traj = g.gradient(kdata_nufft, ktraj)[0]
     tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=1e-3)
-
-    dy_ndft = g.gradient(loss_ndft, kdata_ndft)
-    dy_nufft = g.gradient(loss_nufft, kdata_nufft)
-    tf_test.assertAllClose(dy_ndft, dy_nufft, atol=1e-4)
 
     # Test gradients with respect to kdata
     gradient_ndft_loss = g.gradient(loss_ndft, ktraj)[0]

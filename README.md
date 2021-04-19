@@ -37,7 +37,7 @@ These numbers were obtained with a Quadro P5000.
 
 ### w.r.t trajectory
 
-This is experimental currently and is WIP. Please be cautiously. 
+This is experimental currently and is WIP. Please be cautious. 
 Currently this is tested in CI against results from NDFT, but clear mathematical backing to some 
 aspects are still being understood for applying the chain rule.
 

@@ -113,7 +113,3 @@ def test_forward_and_gradients(im_size):
     tf_test.assertAllClose(gradient_ndft_loss, gradient_nufft_loss, atol=5e-4)
     # This is gradient of NDFT from matrix, will help in debug
     # gradient_ndft_matrix = -1j * tf.transpose(tf.matmul(A, tf.transpose(tf.cast(grid_r, tf.complex64) * signal[0][0])))
-
-tf.config.run_functions_eagerly(True)
-test_forward_and_gradients((10, 10))
-test_adjoint_and_gradients((10, 10))

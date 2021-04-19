@@ -32,6 +32,16 @@ python profile_tfkbnufft.py
 
 These numbers were obtained with a Quadro P5000.
 
+
+## Gradients
+
+### w.r.t trajectory
+
+This is experimental currently and is WIP. Please be cautious. 
+Currently this is tested in CI against results from NDFT, but clear mathematical backing to some 
+aspects are still being understood for applying the chain rule.
+
+
 ## References
 
 1. Fessler, J. A., & Sutton, B. P. (2003). Nonuniform fast Fourier transforms using min-max interpolation. *IEEE transactions on signal processing*, 51(2), 560-574.

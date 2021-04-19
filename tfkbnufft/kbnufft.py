@@ -43,6 +43,9 @@ class KbNufftModule(KbModule):
         self.im_size = im_size
         self.im_rank = len(im_size)
         self.grad_traj = grad_traj
+        if self.grad_traj:
+            warnings.warn('The gradient w.r.t trajectory is Experimental and WIP. '
+                          'Please use with caution')
         if grid_size is None:
             self.grid_size = tuple(np.array(self.im_size) * 2)
         else:
@@ -189,7 +192,7 @@ def kbnufft_forward(interpob, multiprocessing=False):
                 grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), x.dtype)[None, ...]
                 fft_dx_dom = scale_and_fft_on_image_volume(
                 x * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
-                dy_dom = tf.cast(-1j * dy * kbinterp(fft_dx_dom, om, interpob), tf.float32)
+                dy_dom = tf.cast(-1j * tf.math.conj(dy) * kbinterp(fft_dx_dom, om, interpob), tf.float32)
             else:
                 dy_dom = None
             return ifft_dy, dy_dom
@@ -233,7 +236,7 @@ def kbnufft_adjoint(interpob, multiprocessing=False):
                 r = [tf.linspace(-im_size[i]/2, im_size[i]/2-1, im_size[i]) for i in range(im_rank)]
                 grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), dx.dtype)[None, ...]
                 ifft_dxr = scale_and_fft_on_image_volume(
-                    dx * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, do_ifft=True)
+                    tf.math.conj(dx) * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, do_ifft=True)
                 dx_dom = tf.cast(1j * y * kbinterp(ifft_dxr, om, interpob, conj=True), om.dtype)
             else:
                 dx_dom = None

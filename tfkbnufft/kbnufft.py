@@ -43,6 +43,9 @@ class KbNufftModule(KbModule):
         self.im_size = im_size
         self.im_rank = len(im_size)
         self.grad_traj = grad_traj
+        if self.grad_traj:
+            warnings.warn('The gradient w.r.t trajectory is Experimental and WIP. '
+                          'Please use with caution')
         if grid_size is None:
             self.grid_size = tuple(np.array(self.im_size) * 2)
         else:

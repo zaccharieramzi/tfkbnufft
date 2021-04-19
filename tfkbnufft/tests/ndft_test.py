@@ -47,7 +47,7 @@ def test_adjoint_and_gradients(im_size):
     # Test gradients with respect to kdata
     gradient_ndft_kdata = g.gradient(I_ndft, kdata)[0]
     gradient_nufft_kdata = g.gradient(I_nufft, kdata)[0]
-    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=1e-3)
+    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=5e-3)
 
     # Test gradients with respect to trajectory location
     gradient_ndft_traj = g.gradient(I_ndft, ktraj)[0]
@@ -92,7 +92,7 @@ def test_forward_and_gradients(im_size):
     # Test gradients with respect to kdata
     gradient_ndft_kdata = g.gradient(kdata_ndft, signal)[0]
     gradient_nufft_kdata = g.gradient(kdata_nufft, signal)[0]
-    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=1e-3)
+    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=5e-3)
 
     # Test gradients with respect to trajectory location
     gradient_ndft_traj = g.gradient(kdata_ndft, ktraj)[0]

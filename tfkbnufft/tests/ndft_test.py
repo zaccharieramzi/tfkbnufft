@@ -99,7 +99,7 @@ def test_forward_and_gradients(im_size):
     gradient_nufft_traj = g.gradient(kdata_nufft, ktraj)[0]
     tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=5e-3)
 
-    # Test gradients with respect to kdata
+    # Test gradients in chain rule with respect to ktraj
     gradient_ndft_loss = g.gradient(loss_ndft, ktraj)[0]
     gradient_nufft_loss = g.gradient(loss_nufft, ktraj)[0]
     tf_test.assertAllClose(gradient_ndft_loss, gradient_nufft_loss, atol=5e-4)

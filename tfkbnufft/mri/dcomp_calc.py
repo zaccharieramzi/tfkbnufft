@@ -85,6 +85,7 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj, stack
     return dcomp
 
 
+@tf.custom_gradient
 def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, num_iterations=10):
     """Numerical density compensation estimation for a any trajectory.
 
@@ -129,4 +130,6 @@ def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, n
     ratio = tf.reduce_mean(test_im_recon)
     test_sig = test_sig / tf.cast(ratio, test_sig.dtype)
     test_sig = test_sig[0, 0]
-    return test_sig
+    def grad(dy):
+        return tf.zeros_like(dy)
+    return test_sig, grad

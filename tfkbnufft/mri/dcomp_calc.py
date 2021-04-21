@@ -112,15 +112,15 @@ def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, n
     Returns:
         tensor: The density compensation coefficients for ktraj of size (m).
     """
-    test_sig = tf.ones([1, 1, ktraj.shape[1]], dtype=tf.complex64)
+    test_sig = tf.ones([1, 1, ktraj.shape[1]], dtype=tf.float32)
     for i in range(num_iterations):
-        test_sig = test_sig / tf.cast(tf.math.abs(kbinterp(
-            adjkbinterp(test_sig, ktraj[None, :], interpob),
+        test_sig = test_sig / tf.math.abs(kbinterp(
+            adjkbinterp(tf.cast(test_sig, tf.complex64), ktraj[None, :], interpob),
             ktraj[None, :],
             interpob
-        )), 'complex64')
+        ))
     im_size = interpob['im_size']
-
+    test_sig = tf.cast(test_sig, tf.complex64)
     def _normalize(sig):
         test_size = tf.concat([(1, 1,), im_size], axis=0)
         test_im = tf.ones(test_size, dtype=tf.complex64)
@@ -131,7 +131,7 @@ def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, n
             ),
             ktraj[None, :]
         )
-        ratio = tf.reduce_mean(test_im_recon)
+        ratio = tf.reduce_mean(tf.math.abs(test_im_recon))
         sig = sig / tf.cast(ratio, sig.dtype)
         sig = sig[0, 0]
         return sig

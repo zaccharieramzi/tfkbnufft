@@ -85,7 +85,7 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj, stack
     return dcomp
 
 
-def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, num_iterations=10, zero_grad=False):
+def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, num_iterations=10, zero_grad=True):
     """Numerical density compensation estimation for a any trajectory.
 
     Estimates the density compensation function numerically using a NUFFT
@@ -105,7 +105,7 @@ def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, n
             trajectory.
         num_iterations (int): default 10
             number of iterations
-        zero_grad (bool): default False
+        zero_grad (bool): default True
             when true, assumes that the density compensator is a constant and
             returns zero gradients
 

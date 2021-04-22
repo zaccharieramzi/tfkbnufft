@@ -85,7 +85,7 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj, stack
     return dcomp
 
 
-def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, num_iterations=10):
+def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, num_iterations=10, zero_grad=True):
     """Numerical density compensation estimation for a any trajectory.
 
     Estimates the density compensation function numerically using a NUFFT
@@ -105,28 +105,47 @@ def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, n
             trajectory.
         num_iterations (int): default 10
             number of iterations
+        zero_grad (bool): default True
+            when true, assumes that the density compensator is a constant and
+            returns zero gradients
 
     Returns:
         tensor: The density compensation coefficients for ktraj of size (m).
     """
-    test_sig = tf.ones([1, 1, ktraj.shape[1]], dtype=tf.complex64)
-    for i in range(num_iterations):
-        test_sig = test_sig / tf.cast(tf.math.abs(kbinterp(
-            adjkbinterp(test_sig, ktraj[None, :], interpob),
-            ktraj[None, :],
-            interpob
-        )), 'complex64')
-    im_size = interpob['im_size']
-    test_size = tf.concat([(1, 1,), im_size], axis=0)
-    test_im = tf.ones(test_size, dtype=tf.complex64)
-    test_im_recon = nufftob_back(
-        test_sig * nufftob_forw(
-            test_im,
+    def _calculate_density_compensator(ktraj):
+        test_sig = tf.ones([1, 1, ktraj.shape[1]], dtype=tf.float32)
+        for i in range(num_iterations):
+            test_sig = test_sig / tf.math.abs(kbinterp(
+                adjkbinterp(tf.cast(test_sig, tf.complex64), ktraj[None, :], interpob),
+                ktraj[None, :],
+                interpob
+            ))
+        im_size = interpob['im_size']
+        test_sig = tf.cast(test_sig, tf.complex64)
+        test_size = tf.concat([(1, 1,), im_size], axis=0)
+        test_im = tf.ones(test_size, dtype=tf.complex64)
+        test_im_recon = nufftob_back(
+            test_sig * nufftob_forw(
+                test_im,
+                ktraj[None, :]
+            ),
             ktraj[None, :]
-        ),
-        ktraj[None, :]
-    )
-    ratio = tf.reduce_mean(test_im_recon)
-    test_sig = test_sig / tf.cast(ratio, test_sig.dtype)
-    test_sig = test_sig[0, 0]
-    return test_sig
+        )
+        ratio = tf.reduce_mean(tf.math.abs(test_im_recon))
+        test_sig = test_sig / tf.cast(ratio, test_sig.dtype)
+        test_sig = test_sig[0, 0]
+        return test_sig
+
+    @tf.custom_gradient
+    def _calculate_density_compensator_no_grad(ktraj):
+        """Internal function that returns density compensators, but also returns
+        no gradients"""
+        dc_weights = _calculate_density_compensator(ktraj)
+        def grad(dy):
+            return None
+        return dc_weights, grad
+
+    if zero_grad:
+        return _calculate_density_compensator_no_grad(ktraj)
+    else:
+        return _calculate_density_compensator(ktraj)

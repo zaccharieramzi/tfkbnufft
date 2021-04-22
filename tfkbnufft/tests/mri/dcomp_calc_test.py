@@ -57,4 +57,5 @@ def test_density_compensators_tf():
     tf_ktraj = tf.convert_to_tensor(ktraj)
     nufftob_back = kbnufft_adjoint(interpob)
     nufftob_forw = kbnufft_forward(interpob)
-    tf_dcomp = calculate_density_compensator(interpob, nufftob_forw, nufftob_back, tf_ktraj)
+    tf_dcomp = calculate_density_compensator(interpob, nufftob_forw, nufftob_back, tf_ktraj, zero_grad=False)
+    tf_dcomp_no_grad = calculate_density_compensator(interpob, nufftob_forw, nufftob_back, tf_ktraj, zero_grad=True)

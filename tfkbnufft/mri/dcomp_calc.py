@@ -85,19 +85,6 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj, stack
     return dcomp
 
 
-
-
-
-@tf.custom_gradient
-def _calculate_density_compensator_no_grad(*args):
-    """Internal function that returns density compensators, but also returns
-    no gradients"""
-    dc_weights = _calculate_density_compensator(*args)
-    def grad(dy):
-        return [None for arg in args]
-    return dc_weights, grad
-
-
 def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, num_iterations=10, zero_grad=True):
     """Numerical density compensation estimation for a any trajectory.
 

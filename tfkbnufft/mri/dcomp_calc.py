@@ -85,7 +85,65 @@ def calculate_radial_dcomp_tf(interpob, nufftob_forw, nufftob_back, ktraj, stack
     return dcomp
 
 
-def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, num_iterations=10, zero_grad=True):
+def _calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, num_iterations=10):
+    """Numerical density compensation estimation for a any trajectory.
+
+    Estimates the density compensation function numerically using a NUFFT
+    interpolator operator and a k-space trajectory (ktraj).
+    This function implements Pipe et al
+
+    This function uses a nufft hyper parameter dictionary, the associated nufft
+    operators and k-space trajectory.
+
+    Args:
+        interpob (dict): the output of `KbNufftModule._extract_nufft_interpob`
+            containing all the hyper-parameters for the nufft computation.
+        nufftob_forw (fun)
+        nufftob_back (fun)
+        ktraj (tensor): The k-space trajectory in radians/voxel dimension (d, m).
+            d is the number of spatial dimensions, and m is the length of the
+            trajectory.
+        num_iterations (int): default 10
+            number of iterations
+
+    Returns:
+        tensor: The density compensation coefficients for ktraj of size (m).
+    """
+    test_sig = tf.ones([1, 1, ktraj.shape[1]], dtype=tf.float32)
+    for i in range(num_iterations):
+        test_sig = test_sig / tf.math.abs(kbinterp(
+            adjkbinterp(tf.cast(test_sig, tf.complex64), ktraj[None, :], interpob),
+            ktraj[None, :],
+            interpob
+        ))
+    im_size = interpob['im_size']
+    test_sig = tf.cast(test_sig, tf.complex64)
+    test_size = tf.concat([(1, 1,), im_size], axis=0)
+    test_im = tf.ones(test_size, dtype=tf.complex64)
+    test_im_recon = nufftob_back(
+        test_sig * nufftob_forw(
+            test_im,
+            ktraj[None, :]
+        ),
+        ktraj[None, :]
+    )
+    ratio = tf.reduce_mean(tf.math.abs(test_im_recon))
+    test_sig = test_sig / tf.cast(ratio, test_sig.dtype)
+    test_sig = test_sig[0, 0]
+    return test_sig
+
+
+@tf.custom_gradient
+def _calculate_density_compensator_no_grad(*args):
+    """Internal function that returns density compensators, but also returns
+    no gradients"""
+    dc_weights = _calculate_density_compensator(*args)
+    def grad(dy):
+        return [None for arg in args]
+    return dc_weights, grad
+
+
+def calculate_density_compensator(*args, zero_grad=True):
     """Numerical density compensation estimation for a any trajectory.
 
     Estimates the density compensation function numerically using a NUFFT
@@ -112,38 +170,7 @@ def calculate_density_compensator(interpob, nufftob_forw, nufftob_back, ktraj, n
     Returns:
         tensor: The density compensation coefficients for ktraj of size (m).
     """
-    test_sig = tf.ones([1, 1, ktraj.shape[1]], dtype=tf.float32)
-    for i in range(num_iterations):
-        test_sig = test_sig / tf.math.abs(kbinterp(
-            adjkbinterp(tf.cast(test_sig, tf.complex64), ktraj[None, :], interpob),
-            ktraj[None, :],
-            interpob
-        ))
-    im_size = interpob['im_size']
-    test_sig = tf.cast(test_sig, tf.complex64)
-    def _normalize(sig):
-        test_size = tf.concat([(1, 1,), im_size], axis=0)
-        test_im = tf.ones(test_size, dtype=tf.complex64)
-        test_im_recon = nufftob_back(
-            sig * nufftob_forw(
-                test_im,
-                ktraj[None, :]
-            ),
-            ktraj[None, :]
-        )
-        ratio = tf.reduce_mean(tf.math.abs(test_im_recon))
-        sig = sig / tf.cast(ratio, sig.dtype)
-        sig = sig[0, 0]
-        return sig
-
-    @tf.custom_gradient
-    def _normalize_zero_grad(sig):
-        sig = _normalize(sig)
-        def grad(dy):
-            # We assume that the density compensator is a constant
-            return tf.zeros_like(dy)
-        return sig, grad
     if zero_grad:
-        return _normalize_zero_grad(test_sig)
+        return _calculate_density_compensator_no_grad(*args)
     else:
-        return _normalize(test_sig)
+        return _calculate_density_compensator(*args)

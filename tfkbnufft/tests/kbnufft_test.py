@@ -60,4 +60,4 @@ def test_forward_gradient(multiprocessing):
         res = forward_op(image, traj)
     grad = tape.gradient(res, image)
     tf_test = tf.test.TestCase()
-    tf_test.assertEqual(grad.shape, 1)
+    tf_test.assertEqual(grad.shape, image.shape)

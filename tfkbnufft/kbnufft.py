@@ -198,7 +198,7 @@ def kbnufft_forward(interpob, multiprocessing=False):
                 # Unbatch back the data
                 nufft_dx_dom = tf.reshape(nufft_dx_dom, shape=(2, -1, *nufft_dx_dom.shape[2:]))
                 dy_dom = tf.cast(-1j * tf.math.conj(dy) * nufft_dx_dom, om.dtype)
-                dy_dom = tf.math.reduce_mean(dy_dom, axis=1)[None, :]
+                dy_dom = tf.math.reduce_sum(dy_dom, axis=1)[None, :]
             else:
                 dy_dom = None
             return ifft_dy, dy_dom
@@ -249,7 +249,7 @@ def kbnufft_adjoint(interpob, multiprocessing=False):
                 # Unbatch back the data
                 inufft_dxr = tf.reshape(inufft_dxr, shape=(2, -1, *inufft_dxr.shape[2:]))
                 dx_dom = tf.cast(1j * y * inufft_dxr, om.dtype)
-                dx_dom = tf.math.reduce_mean(dx_dom, axis=1)[None, :]
+                dx_dom = tf.math.reduce_sum(dx_dom, axis=1)[None, :]
             else:
                 dx_dom = None
             return dx_dy, dx_dom

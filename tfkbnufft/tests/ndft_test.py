@@ -18,7 +18,8 @@ def get_fourier_matrix(ktraj, im_size, im_rank, do_ifft=False):
 
 
 @pytest.mark.parametrize('im_size', [(10, 10)])
-def test_adjoint_and_gradients(im_size):
+@pytest.mark.parametrize('batch_size', [1, 2])
+def test_adjoint_and_gradients(im_size, batch_size):
     tf.random.set_seed(0)
     grid_size = tuple(np.array(im_size)*2)
     im_rank = len(im_size)
@@ -27,16 +28,16 @@ def test_adjoint_and_gradients(im_size):
     # Generate Trajectory
     ktraj_ori = tf.Variable(tf.random.uniform((1, im_rank, M), minval=-1/2, maxval=1/2)*2*np.pi)
     # Have a random signal
-    signal = tf.Variable(tf.cast(tf.random.uniform((1, 1, *im_size)), tf.complex64))
+    signal = tf.Variable(tf.cast(tf.random.uniform((1, batch_size, *im_size)), tf.complex64))
     kdata = tf.Variable(kbnufft_forward(nufft_ob._extract_nufft_interpob())(signal, ktraj_ori))
     Idata = tf.Variable(kbnufft_adjoint(nufft_ob._extract_nufft_interpob())(kdata, ktraj_ori))
     ktraj_noise = np.copy(ktraj_ori)
     ktraj_noise += 0.01 * tf.Variable(tf.random.uniform((1, im_rank, M), minval=-1/2, maxval=1/2)*2*np.pi)
     ktraj = tf.Variable(ktraj_noise)
     with tf.GradientTape(persistent=True) as g:
-        I_nufft = kbnufft_adjoint(nufft_ob._extract_nufft_interpob())(kdata, ktraj)[0][0]
+        I_nufft = kbnufft_adjoint(nufft_ob._extract_nufft_interpob())(kdata, ktraj)[0]
         A = get_fourier_matrix(ktraj, im_size, im_rank, do_ifft=True)
-        I_ndft = tf.reshape(tf.matmul(tf.transpose(A), kdata[0][0][..., None]), im_size)
+        I_ndft = tf.reshape(tf.matmul(tf.transpose(A), kdata[0][..., None]), (batch_size, *im_size))
         loss_nufft = tf.math.reduce_mean(tf.abs(Idata - I_nufft)**2)
         loss_ndft = tf.math.reduce_mean(tf.abs(Idata - I_ndft)**2)
 
@@ -47,12 +48,12 @@ def test_adjoint_and_gradients(im_size):
     # Test gradients with respect to kdata
     gradient_ndft_kdata = g.gradient(I_ndft, kdata)[0]
     gradient_nufft_kdata = g.gradient(I_nufft, kdata)[0]
-    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=5e-3)
+    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=6e-3)
 
     # Test gradients with respect to trajectory location
     gradient_ndft_traj = g.gradient(I_ndft, ktraj)[0]
     gradient_nufft_traj = g.gradient(I_nufft, ktraj)[0]
-    tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=5e-3)
+    tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=6e-3)
 
     # Test gradients in chain rule with respect to ktraj
     gradient_ndft_loss = g.gradient(loss_ndft, ktraj)[0]
@@ -64,7 +65,8 @@ def test_adjoint_and_gradients(im_size):
 
 
 @pytest.mark.parametrize('im_size', [(10, 10)])
-def test_forward_and_gradients(im_size):
+@pytest.mark.parametrize('batch_size', [1, 2])
+def test_forward_and_gradients(im_size, batch_size):
     tf.random.set_seed(0)
     grid_size = tuple(np.array(im_size)*2)
     im_rank = len(im_size)
@@ -73,7 +75,7 @@ def test_forward_and_gradients(im_size):
     # Generate Trajectory
     ktraj_ori = tf.Variable(tf.random.uniform((1, im_rank, M), minval=-1/2, maxval=1/2)*2*np.pi)
     # Have a random signal
-    signal = tf.Variable(tf.cast(tf.random.uniform((1, 1, *im_size)), tf.complex64))
+    signal = tf.Variable(tf.cast(tf.random.uniform((1, batch_size, *im_size)), tf.complex64))
     kdata = kbnufft_forward(nufft_ob._extract_nufft_interpob())(signal, ktraj_ori)[0]
     ktraj_noise = np.copy(ktraj_ori)
     ktraj_noise += 0.01 * tf.Variable(tf.random.uniform((1, im_rank, M), minval=-1/2, maxval=1/2)*2*np.pi)
@@ -81,7 +83,7 @@ def test_forward_and_gradients(im_size):
     with tf.GradientTape(persistent=True) as g:
         kdata_nufft = kbnufft_forward(nufft_ob._extract_nufft_interpob())(signal, ktraj)[0]
         A = get_fourier_matrix(ktraj, im_size, im_rank, do_ifft=False)
-        kdata_ndft = tf.transpose(tf.matmul(A, tf.reshape(signal[0][0], (tf.reduce_prod(im_size), 1))))
+        kdata_ndft = tf.matmul(tf.reshape(signal[0], (batch_size, tf.reduce_prod(im_size))), tf.transpose(A))
         loss_nufft = tf.math.reduce_mean(tf.abs(kdata - kdata_nufft)**2)
         loss_ndft = tf.math.reduce_mean(tf.abs(kdata - kdata_ndft)**2)
 
@@ -92,12 +94,12 @@ def test_forward_and_gradients(im_size):
     # Test gradients with respect to kdata
     gradient_ndft_kdata = g.gradient(kdata_ndft, signal)[0]
     gradient_nufft_kdata = g.gradient(kdata_nufft, signal)[0]
-    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=5e-3)
+    tf_test.assertAllClose(gradient_ndft_kdata, gradient_nufft_kdata, atol=6e-3)
 
     # Test gradients with respect to trajectory location
     gradient_ndft_traj = g.gradient(kdata_ndft, ktraj)[0]
     gradient_nufft_traj = g.gradient(kdata_nufft, ktraj)[0]
-    tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=5e-3)
+    tf_test.assertAllClose(gradient_ndft_traj, gradient_nufft_traj, atol=6e-3)
 
     # Test gradients in chain rule with respect to ktraj
     gradient_ndft_loss = g.gradient(loss_ndft, ktraj)[0]

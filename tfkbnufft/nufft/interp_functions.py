@@ -219,7 +219,7 @@ def kbinterp(x, om, interpob, conj=False):
             y = y_not_shifted * shift
         return y
 
-    y = tf.map_fn(_map_body, [x, tm, om], dtype=x.dtype)
+    y = tf.map_fn(_map_body, [x, tm, om], dtype=x.dtype, parallel_iterations=x.shape[0])
 
     return y
 
@@ -272,7 +272,7 @@ def adjkbinterp(y, om, interpob):
         x = run_interp_back(y_shifted, _tm, params)
         return x
 
-    x = tf.map_fn(_map_body, [y, om, tm], dtype=y.dtype)
+    x = tf.map_fn(_map_body, [y, om, tm], dtype=y.dtype, parallel_iterations=y.shape[0])
 
     bsize = tf.shape(y)[0]
     ncoil = tf.shape(y)[1]

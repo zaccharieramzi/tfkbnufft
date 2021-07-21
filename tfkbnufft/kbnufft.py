@@ -192,7 +192,13 @@ def kbnufft_forward(interpob, multiprocessing=False):
                 grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), x.dtype)[None, ...]
                 fft_dx_dom = scale_and_fft_on_image_volume(
                 x * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank)
-                dy_dom = tf.cast(-1j * tf.math.conj(dy) * kbinterp(fft_dx_dom, om, interpob), tf.float32)
+                # Do this when handling batches
+                fft_dx_dom = tf.reshape(fft_dx_dom, shape=(-1, 1, *fft_dx_dom.shape[2:]))
+                nufft_dx_dom = kbinterp(fft_dx_dom, tf.repeat(om, im_rank, axis=0), interpob)
+                # Unbatch back the data
+                nufft_dx_dom = tf.reshape(nufft_dx_dom, shape=(-1, im_rank, *nufft_dx_dom.shape[2:]))
+                dy_dom = tf.cast(-1j * tf.math.conj(dy) * nufft_dx_dom, om.dtype)
+                # dy_dom = tf.math.reduce_sum(dy_dom, axis=1)[None, :]
             else:
                 dy_dom = None
             return ifft_dy, dy_dom
@@ -234,10 +240,17 @@ def kbnufft_adjoint(interpob, multiprocessing=False):
             if grad_traj:
                 # Gradients with respect to trajectory locations
                 r = [tf.linspace(-im_size[i]/2, im_size[i]/2-1, im_size[i]) for i in range(im_rank)]
+                # This wont work for multicoil case as the dimension for dx is `batch_size x coil x Nx x Ny`
                 grid_r = tf.cast(tf.meshgrid(*r, indexing='ij'), dx.dtype)[None, ...]
                 ifft_dxr = scale_and_fft_on_image_volume(
                     tf.math.conj(dx) * grid_r, scaling_coef, grid_size, im_size, norm, im_rank=im_rank, do_ifft=True)
-                dx_dom = tf.cast(1j * y * kbinterp(ifft_dxr, om, interpob, conj=True), om.dtype)
+                # Do this when handling batches
+                ifft_dxr = tf.reshape(ifft_dxr, shape=(-1, 1, *ifft_dxr.shape[2:]))
+                inufft_dxr = kbinterp(ifft_dxr, tf.repeat(om, im_rank, axis=0), interpob, conj=True)
+                # Unbatch back the data
+                inufft_dxr = tf.reshape(inufft_dxr, shape=(-1, im_rank, *inufft_dxr.shape[2:]))
+                dx_dom = tf.cast(1j * y * inufft_dxr, om.dtype)
+                # dx_dom = tf.math.reduce_sum(dx_dom, axis=1)[None, :]
             else:
                 dx_dom = None
             return dx_dy, dx_dom

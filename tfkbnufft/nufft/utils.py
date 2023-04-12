@@ -29,7 +29,7 @@ def build_spmatrix(om, numpoints, im_size, grid_size, n_shift, order, alpha):
         Jvec = np.reshape(np.array(range(1, npts + 1)), (1, npts))
         kern_in = -1 * Jvec + np.expand_dims(interp_dist, 1)
 
-        cur_coeff = np.zeros(shape=kern_in.shape, dtype=np.complex)
+        cur_coeff = np.zeros(shape=kern_in.shape, dtype=np.complex64)
         indices = abs(kern_in) < npts / 2
         bess_arg = np.sqrt(1 - (kern_in[indices] / (npts / 2))**2)
         denom = special.iv(order, alpha)
